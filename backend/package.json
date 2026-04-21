@@ -1,6 +1,7 @@
 {
   "main": "dist/index.js",
   "dependencies": {
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "http": "^0.0.1-security",
     "socket.io": "^4.8.3"
