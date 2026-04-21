@@ -1,8 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { useMemo } from 'react'
-import { Routes, Route, BrowserRouter, useNavigate } from "react-router-dom"
-import { useParams } from 'react-router-dom'
+//import { useMemo } from 'react'
+//import { Routes, Route, BrowserRouter, useNavigate } from "react-router-dom"
+import { Routes, Route, BrowserRouter } from "react-router-dom"
+//import { useParams } from 'react-router-dom'
 import './index.css'
 import App from './routes/App.tsx'
 
