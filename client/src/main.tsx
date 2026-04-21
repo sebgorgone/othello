@@ -17,7 +17,7 @@ function RoomConnectionRoute() {
   const hasValidCharacters = /^[A-Z0-9]+$/.test(normalizedRoomCode)
 
   if (!normalizedRoomCode || !hasValidCharacters) {
-    console.log('invalid code redirecting');
+    console.log('invalid code redirecting ' + roomCode);
     return <Navigate to='/' replace />
   }
 
