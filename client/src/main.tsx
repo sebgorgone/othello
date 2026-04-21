@@ -19,7 +19,7 @@ function RoomConnectionRoute() {
     return useNavigate('/')
   }
 
-  return <>connecting</>>
+  return <>connecting</>
 }
 
 createRoot(document.getElementById('root')!).render(

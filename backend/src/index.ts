@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import pool from "./db-connect.js"
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
