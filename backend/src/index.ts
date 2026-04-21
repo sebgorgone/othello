@@ -128,11 +128,12 @@ app.use(express.json());
 
 
 
-// Create a new joinable room and return its code.
+
 app.post("/rooms", (req, res) => {
   const room = createRoom();
 
   res.status(201).json({
+    ok: true,
     roomCode: room.code,
     maxPlayers: MAX_PLAYERS_PER_ROOM,
     joinEvent: "join-room",
@@ -141,7 +142,7 @@ app.post("/rooms", (req, res) => {
   });
 });
 
-// List all active rooms and their current occupancy.
+
 app.get("/rooms", (req, res) => {
   sweepExpiredRooms();
 
@@ -245,12 +246,10 @@ io.on("connection", (socket) => {
     });
   };
 
-  // Primary join flow for clients.
   socket.on("join-room", (payload?: { roomCode?: string }) => {
     tryJoinRoom(payload?.roomCode);
   });
 
-  // Optional auto-join when roomCode is passed in connection query.
   const handshakeRoomCode = socket.handshake.query.roomCode;
   if (typeof handshakeRoomCode === "string") {
     tryJoinRoom(handshakeRoomCode);
