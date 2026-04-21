@@ -92,29 +92,45 @@ function createRoom(): Room {
   return room;
 }
 
-function leaveCurrentRoom(socketId: string): void {
+function leaveCurrentRoom(socketId: string): { roomCode: string; before: number; after: number; deleted: boolean } | null {
   const currentRoomCode = socketToRoom.get(socketId);
 
   if (!currentRoomCode) {
-    return;
+    return null;
   }
 
   const room = rooms.get(currentRoomCode);
 
   if (!room) {
     socketToRoom.delete(socketId);
-    return;
+    return null;
   }
+
+  const before = room.sockets.size;
 
   room.sockets.delete(socketId);
   socketToRoom.delete(socketId);
 
+  const after = room.sockets.size;
+
   if (room.sockets.size === 0) {
     rooms.delete(currentRoomCode);
-    return;
+    return {
+      roomCode: currentRoomCode,
+      before,
+      after,
+      deleted: true,
+    };
   }
 
   refreshRoomTtl(currentRoomCode);
+
+  return {
+    roomCode: currentRoomCode,
+    before,
+    after,
+    deleted: false,
+  };
 }
 
 function listRooms() {
@@ -202,19 +218,29 @@ const sweepTimer = setInterval(() => {
 sweepTimer.unref();
 
 io.on("connection", (socket) => {
-  console.log("user connected:", socket.id);
+  const remoteAddress = socket.handshake.headers["x-forwarded-for"] ?? socket.handshake.address;
+  const initialRoomQuery = typeof socket.handshake.query.roomCode === "string" ? socket.handshake.query.roomCode : "";
+
+  console.log(`[socket-connect] id=${socket.id} ip=${remoteAddress} requestedRoom=${initialRoomQuery || "none"}`);
 
   const tryJoinRoom = (rawRoomCode: unknown) => {
     const roomCode = typeof rawRoomCode === "string" ? rawRoomCode.trim().toUpperCase() : "";
+    const existingRoomCode = socketToRoom.get(socket.id);
+
+    console.log(
+      `[room-join-attempt] id=${socket.id} ip=${remoteAddress} requestedRoom=${roomCode || "none"} existingRoom=${existingRoomCode ?? "none"}`,
+    );
 
     if (!roomCode) {
+      console.log(`[room-join-fail] id=${socket.id} reason=roomCode-required`);
       socket.emit("room-error", { message: "roomCode is required" });
       return;
     }
 
-    const existingRoomCode = socketToRoom.get(socket.id);
-
     if (existingRoomCode && existingRoomCode !== roomCode) {
+      console.log(
+        `[room-join-fail] id=${socket.id} room=${roomCode} reason=socket-already-joined existingRoom=${existingRoomCode}`,
+      );
       socket.emit("room-error", { message: "socket already joined a room", roomCode: existingRoomCode });
       return;
     }
@@ -222,25 +248,36 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomCode);
 
     if (!room) {
+      console.log(`[room-join-fail] id=${socket.id} room=${roomCode} reason=room-not-found`);
       socket.emit("room-error", { message: "room not found", roomCode });
       return;
     }
 
     if (isRoomExpired(room)) {
+      console.log(`[room-join-fail] id=${socket.id} room=${roomCode} reason=room-expired`);
       expireRoom(roomCode, "ttl-expired");
       socket.emit("room-error", { message: "room has expired", roomCode });
       return;
     }
 
     if (room.sockets.size >= MAX_PLAYERS_PER_ROOM && !room.sockets.has(socket.id)) {
+      console.log(
+        `[room-join-fail] id=${socket.id} room=${roomCode} reason=room-full occupancy=${room.sockets.size}/${MAX_PLAYERS_PER_ROOM}`,
+      );
       socket.emit("room-error", { message: "room is full", roomCode });
       return;
     }
 
+    const before = room.sockets.size;
     room.sockets.add(socket.id);
     socketToRoom.set(socket.id, roomCode);
     socket.join(roomCode);
     refreshRoomTtl(roomCode);
+    const after = room.sockets.size;
+
+    console.log(
+      `[room-join-success] id=${socket.id} ip=${remoteAddress} room=${roomCode} occupancy=${before}->${after}/${MAX_PLAYERS_PER_ROOM} expiresAt=${room.expiresAt}`,
+    );
 
     socket.emit("room-joined", {
       roomCode,
@@ -260,8 +297,16 @@ io.on("connection", (socket) => {
   }
 
   socket.on("disconnect", () => {
-    leaveCurrentRoom(socket.id);
-    console.log("user disconnected:", socket.id);
+    const leaveResult = leaveCurrentRoom(socket.id);
+
+    if (leaveResult) {
+      console.log(
+        `[socket-disconnect] id=${socket.id} ip=${remoteAddress} room=${leaveResult.roomCode} occupancy=${leaveResult.before}->${leaveResult.after} deleted=${leaveResult.deleted}`,
+      );
+      return;
+    }
+
+    console.log(`[socket-disconnect] id=${socket.id} ip=${remoteAddress} room=none`);
   });
 });
 
