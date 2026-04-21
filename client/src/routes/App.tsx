@@ -13,6 +13,7 @@ function App () {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
+          backgroundColor: '#656565',
         }}
       >
 
