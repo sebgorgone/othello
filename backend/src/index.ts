@@ -23,7 +23,7 @@ type Room = {
 
 await initDB();
 
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
   const db = await checkDB;
 
   const health = {
