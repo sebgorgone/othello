@@ -9,12 +9,19 @@ type Props = {
 const JOIN_TIMEOUT_MS = 6000
 
 function OthelloRoom(props: Props) {
+
+
+
+
   const { code } = props
   const nav = useNavigate()
   const svr = import.meta.env.VITE_SVR_URL
   const [isRoomConnectionConfirmed, setIsRoomConnectionConfirmed] = useState(false)
   const hasNavigatedRef = useRef(false)
   const isRoomConnectionConfirmedRef = useRef(false)
+
+  
+
 
   useEffect(() => {
     setIsRoomConnectionConfirmed(false)
@@ -76,6 +83,12 @@ function OthelloRoom(props: Props) {
     }
   }, [code, nav, svr])
 
+
+
+
+
+
+  
   return <>room: {code} {isRoomConnectionConfirmed ? '(connected)' : '(connecting...)'}</>
 }
 
