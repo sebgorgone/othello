@@ -13,7 +13,9 @@ function App () {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
+          justifyContent: 'center',
           backgroundColor: '#656565',
+          gap: '32px'
         }}
       >
 
