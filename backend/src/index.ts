@@ -24,7 +24,7 @@ type Room = {
 await initDB();
 
 app.get("/health", async (req, res) => {
-  const db = await checkDB;
+  const db = await checkDB();
 
   const health = {
     server: 'up',
