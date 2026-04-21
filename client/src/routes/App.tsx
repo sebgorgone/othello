@@ -25,7 +25,7 @@ function App () {
       const room = await res.json();
       console.log(room);
     } catch (err) {
-      console.error('POST req to /rooms failed: ' err);
+      console.error('POST req to /rooms failed: ' + err);
       throw error;
     }
   }
