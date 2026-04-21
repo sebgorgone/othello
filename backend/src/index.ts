@@ -4,14 +4,18 @@ import { Server } from "socket.io";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import { checkDB, initDB } from "./db-connect.js"
-import pool from "./db-connect.js"
+import { checkDB, initDB } from "./db-connect.js";
+import pool from "./db-connect.js";
+import cors from "cors";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config({path: path.resolve(__dirname, "../.env")});
 const app = express();
+app.use(cors({
+  origin: ['*']
+}));
 
 type Room = {
   code: string;
