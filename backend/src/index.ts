@@ -2,9 +2,10 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import dotenv from "dotenv";
+import path from "path";
 
 
-dotenv.config();
+dotenv.config({path: path.resolve(__dirname, "../.env")});
 const app = express();
 
 type Room = {
