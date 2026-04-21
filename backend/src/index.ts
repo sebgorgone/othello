@@ -4,7 +4,7 @@ import { Server } from "socket.io";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import { initDB } from "./db-connect.js"
+import { checkDB, initDB } from "./db-connect.js"
 import pool from "./db-connect.js"
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,6 +22,16 @@ type Room = {
 
 
 await initDB();
+
+app.get("/health", (req, res) => {
+  const db = await checkDB;
+
+  const health = {
+    server: 'up',
+    db
+  }
+  res.json(health);
+});
 
 
 const rooms = new Map<string, Room>();
@@ -116,9 +126,7 @@ function listRooms() {
 
 app.use(express.json());
 
-app.get("/health", (req, res) => {
-  res.send("server alive");
-});
+
 
 // Create a new joinable room and return its code.
 app.post("/rooms", (req, res) => {

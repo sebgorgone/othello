@@ -31,5 +31,18 @@ export async function initDB() {
   }
 }
 
+export async function checkDB() {
+  try {
+    const conn = await pool.getConnection();
+    conn.release();
+    return { status: "ok" };
+  } catch (err) {
+    return {
+      status: "down",
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
 // export pool
 export default pool;
