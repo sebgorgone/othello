@@ -19,14 +19,14 @@ function App () {
       });
 
       if (!res.ok) {
-        throw new Error('bad http request: ' + response.status);
+        throw new Error('bad http request: ' + res.status);
       }
 
       const room = await res.json();
       console.log(room);
     } catch (err) {
       console.error('POST req to /rooms failed: ' + err);
-      throw error;
+      throw err;
     }
   }
 
@@ -58,8 +58,17 @@ function App () {
 
         <button
           type='button'
-          onClick={() => createRoomHandler()}
+          onClick={createRoomHandler}
+          style={{
+            border: 'none',
+            padding: '8px',
+            backgroundColor: 'green',
+            color: 'white',
+            fontFamily: 'main-bold'
+          }}
         >
+
+          start a new game 
 
         </button>
 
