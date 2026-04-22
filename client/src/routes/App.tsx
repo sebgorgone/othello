@@ -9,7 +9,11 @@ function App () {
             border: 'none',
             padding: '8px',
             backgroundColor: 'green',
-            fontFamily: 'main-bold'
+            fontFamily: 'main-bold',
+            color: 'black',
+            borderRadius: '3px;',
+            boxShadow: tsGradient,
+            fontSize: '17px'
           }
 
 
@@ -52,7 +56,7 @@ function App () {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#404040',
+          backgroundColor: '#353025',
           gap: '32px'
         }}
       >
@@ -64,7 +68,14 @@ function App () {
 
         </h1>
 
-        <a href='https://www.worldothello.org/about/about-othello/othello-rules/official-rules/'>Official Othello Game Rules</a>
+        <a
+          style={{
+            fontSize: '1.3em',
+            fontWeight: 'bold',
+          }} 
+          href='https://www.worldothello.org/about/about-othello/othello-rules/official-rules/'>
+            Official Othello Game Rules
+        </a>
 
 
         <button
