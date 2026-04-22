@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { RoomListItem } from './api.ts';
-import { roomList as getRoomList } from './api.ts';
+import { getRoomList } from './api.ts';
 
 function List() {
   const [rooms, setRooms] = useState<RoomListItem[]>([]);
