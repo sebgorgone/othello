@@ -43,7 +43,7 @@ function App () {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#656565',
+          backgroundColor: '#404040',
           gap: '32px'
         }}
       >
