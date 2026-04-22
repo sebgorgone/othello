@@ -1,27 +1,28 @@
 import { useState, useEffect } from 'react';
 import type { RoomListItem } from './api';
-import { getRoomList } from './api';
+import { roomList as getRoomList } from './api';
 
-function List(){
-   const [roomList, setRoomList] = useState<RoomListItem[]>([]);
+function List() {
+  const [rooms, setRooms] = useState<RoomListItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-   useEffect( async () => {
+  useEffect(() => {
+    async function fetchRooms() {
       try {
-         async () => {
-            const list = await getRoomList();
-            setRoomList(list);
-         }
-         console.log('retrieved rooms');
+        const list = await getRoomList();
+        setRooms(list);
+        console.log('retrieved rooms');
       } catch (err) {
-         console.error("error getting list " + err);
+        console.error('error getting list', err);
+      } finally {
+        setLoading(false);
       }
+    }
 
-   }, [])
+    fetchRooms();
+  }, []);
 
-   return roomList.length !== 0 ? 
-      <>loading...</> 
-      : 
-      <>loaded: {roomList}</>
+  return loading ? <div>loading...</div> : <div>loaded: {rooms.length} rooms</div>;
 }
 
-export default List
+export default List;
