@@ -12,7 +12,7 @@ const rooms = new Map<string, Room>();
 const socketToRoom = new Map<string, string>();
 
 export const MAX_PLAYERS_PER_ROOM = 2;
-export const ROOM_TTL_MS = 10 * 60 * 1000;
+export const ROOM_TTL_MS = 20 * 60 * 1000;
 export const ROOM_SWEEP_INTERVAL_MS = 30 * 1000;
 
 function isRoomExpired(room: Room, now = Date.now()): boolean {
@@ -239,6 +239,7 @@ export function registerSocketHandlers(io: Server): void {
 			room.sockets.add(socket.id);
 			socketToRoom.set(socket.id, roomCode);
 			socket.join(roomCode);
+			io.to(roomCode).emit("refresh-board", { roomCode });
 			refreshRoomTtl(roomCode);
 			const after = room.sockets.size;
 

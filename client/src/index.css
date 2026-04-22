@@ -17,7 +17,6 @@
   padding: 0;
   display: block;
   appearance: none;
-  -webkit-appearance: none;
   animation: pulse 1s infinite;
 }
 

@@ -39,6 +39,9 @@ function List() {
       fetchRooms();
    }, []);
 
+
+   console.log(rooms)
+
    return<>
       <div
          style={{
@@ -127,7 +130,7 @@ function List() {
                >
 
                   {rooms.map((room) => {
-                     return <button 
+                     if (room.playerCount > 0) return <button 
                      style={{
                         ...buttonStyle,
                         backgroundColor: '#455055',
@@ -137,9 +140,9 @@ function List() {
                      }}
                      key={room.code}
                      type='button'
-                     onClick={() => {joinByCode(room.code)}}
+                     onClick={() => {if (room.playerCount === 2) return;joinByCode(room.code)}}
                      >
-                        {room.code}
+                        {room.code} - {room.playerCount}/2
                      </button>
                   })}
 

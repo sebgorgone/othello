@@ -213,7 +213,7 @@ function OthelloRoom(props: Props) {
 
       <div
         style={{
-          width: 'min(100vw - 100px, 100vh - 100px)',
+          width: 'min(100vw - 100px, 100vh - 136px)',
           aspectRatio: '1 / 1',
           display: 'grid',
           gridTemplate: 'repeat(8, 1fr) / repeat(8, 1fr)'
@@ -259,6 +259,46 @@ function OthelloRoom(props: Props) {
     </>;
   }
 
+
+  function getConnectedNum() {
+    if (!board) return;
+    if (board.white && board.black) return '2 / 2';
+
+    return '1 / 2';
+  }
+
+  function getPlayercolorIcon() {
+    const mySocketId = socketIdRef.current;
+
+    if (!board || !mySocketId) return null;
+
+    if (mySocketId === board.white) return (
+      <img 
+        alt='white game piece'
+        src='white-chip.svg'
+        style={{
+          width: '64px',
+          aspectRatio: '1 / 1'
+        }}
+
+      />
+    )
+
+    if (mySocketId === board.black) return (
+      <img 
+        alt='black game piece'
+        src='black-chip.svg'
+        style={{
+          width: '64px',
+          aspectRatio: '1 / 1'
+        }}
+
+      />
+    )
+
+    return null;
+  }
+
   return (
     <>
       <div
@@ -277,10 +317,11 @@ function OthelloRoom(props: Props) {
           style={{
             display: 'flex',
             width: '100%',
-            height: '86px',
+            height: '124px',
             justifyContent: 'space-between',
             padding: '8px',
             alignItems: 'center',
+            flexDirection: 'column'
           }}
         >
 
@@ -290,31 +331,45 @@ function OthelloRoom(props: Props) {
             style={{
               display: 'flex',
               gap: '12px',
-              alignItems: 'center'
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%'
             }}
           >
 
-
-            <button
-              style={{
-                ...buttonStyle,
-                backgroundColor: 'ForestGreen'
-              }}
-              type='button'
-              onClick={() => nav('/')}
+            <div
+              style={{display: 'flex', flexDirection: 'column', gap: '14px'}}
             >
-              leave match
-            </button>
 
-            <p
-              style={{
-                fontFamily: 'main-bold',
-                color: 'white',
-                fontSize: '20px',
-              }}
-            >
-              room: {code} {isRoomConnectionConfirmed ? '(connected)' : '(connecting...)'}
-            </p>
+              <button
+                style={{
+                  ...buttonStyle,
+                  backgroundColor: 'ForestGreen'
+                }}
+                type='button'
+                onClick={() => nav('/')}
+              >
+                leave match
+              </button>
+
+              <p
+                style={{
+                  fontFamily: 'main-bold',
+                  color: 'white',
+                  fontSize: '20px',
+                }}
+              >
+                room: {code} {isRoomConnectionConfirmed ? `(connected ${getConnectedNum()})` : '(connecting...)'}
+              </p>
+
+            </div>
+
+
+
+
+            {getPlayercolorIcon()}
+
+
 
 
 
@@ -325,17 +380,13 @@ function OthelloRoom(props: Props) {
           <div
             style={{
               display: 'flex',
-              gap: '12px',
               alignItems: 'center',
-              marginRight: '8px'
+              marginRight: '8px',
+              width: '100%',
+              padding: '12px',
+              justifyContent: 'space-between'
             }}
           >
-            {getPlayersMove() &&
-              <img
-                alt={`${getPlayersMove()}'s chip`}
-                style={{ width: '64px', aspectRatio: '1 / 1' }}
-                src={`${getPlayersMove()}-chip.svg`}
-              />}
 
             <p
               style={{
@@ -346,6 +397,17 @@ function OthelloRoom(props: Props) {
             >
               {getPlayersMove()}{getPlayersMove() ? "'s turn" : ''}
             </p>
+
+            {(board && board.myMove) && 
+              <p
+                style={{
+                  fontFamily: 'main-bold',
+                  color: 'white',
+                  fontSize: '20px',
+                }}
+              >
+                Your Move
+              </p>}
           </div>
         </div>
 
