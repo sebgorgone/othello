@@ -118,7 +118,7 @@ function OthelloRoom(props: Props) {
 
   function checkValidMove(x: number, y: number) {
     
-    if (!board.validMoves) return
+    if (!board || !board.validMoves) return
 
     let foundMove = board.validMoves.filter(vm => vm.x === x && vm.y === y);
 
@@ -289,7 +289,7 @@ function OthelloRoom(props: Props) {
               }}
             >
 
-              {getPlayersMove()}{getPlayersMove ? "'s turn" : ''}
+              {getPlayersMove()}{getPlayersMove() ? "'s turn" : ''}
 
             </p>
 
