@@ -19,6 +19,7 @@ function OthelloRoom(props: Props) {
 
   const [isRoomConnectionConfirmed, setIsRoomConnectionConfirmed] = useState(false);
   const [board, setBoard] = useState<BoardPayload | null>(null);
+  const boardRef = useRef<BoardPayload | null>(null);
   const hasNavigatedRef = useRef(false);
   const isRoomConnectionConfirmedRef = useRef(false);
   const socketIdRef = useRef('');
@@ -47,8 +48,37 @@ function OthelloRoom(props: Props) {
         return;
       }
 
+      const currentBoard = boardRef.current;
+      let myScore: number | null = null;
+      let opponentScore: number | null = null;
+
+      if (currentBoard) {
+        const whiteScore = currentBoard.squares.filter((square) => square.value === 'w').length;
+        const blackScore = currentBoard.squares.filter((square) => square.value === 'b').length;
+        const mySocketId = socketIdRef.current;
+
+        if (mySocketId && currentBoard.white === mySocketId) {
+          myScore = whiteScore;
+          opponentScore = blackScore;
+        } else if (mySocketId && currentBoard.black === mySocketId) {
+          myScore = blackScore;
+          opponentScore = whiteScore;
+        }
+      }
+
       hasNavigatedRef.current = true;
-      nav(path, { replace: true });
+
+      if (myScore === null || opponentScore === null) {
+        nav(path, { replace: true });
+        return;
+      }
+
+      const params = new URLSearchParams({
+        my: String(myScore),
+        opp: String(opponentScore),
+      });
+
+      nav(`${path}?${params.toString()}`, { replace: true });
     };
 
     if (!svr) {
@@ -60,6 +90,7 @@ function OthelloRoom(props: Props) {
     hasNavigatedRef.current = false;
     isRoomConnectionConfirmedRef.current = false;
     socketIdRef.current = '';
+    boardRef.current = null;
     setBoard(null);
 
     socket = io(svr, {
@@ -93,6 +124,7 @@ function OthelloRoom(props: Props) {
 
         try {
           const result = await getBoard(code, socket.id);
+          boardRef.current = result;
           setBoard(result);
         } catch (err) {
           console.error('[room-connect] getBoard failed', err);
@@ -106,6 +138,7 @@ function OthelloRoom(props: Props) {
 
       try {
         const result = await getBoard(code, socket.id);
+        boardRef.current = result;
         setBoard(result);
       } catch (err) {
         console.error('[room-connect] refresh-board failed', err);
