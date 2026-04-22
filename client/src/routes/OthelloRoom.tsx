@@ -5,107 +5,112 @@ import { getBoard } from './api';
 import type { BoardPayload } from './api';
 
 type Props = {
-  code: string
-}
+  code: string;
+};
 
-const JOIN_TIMEOUT_MS = 6000
+const JOIN_TIMEOUT_MS = 6000;
 
 function OthelloRoom(props: Props) {
+  const { code } = props;
+  const nav = useNavigate();
+  //@ts-ignore
+  const svr = import.meta.env.VITE_SVR_URL;
 
+  const [isRoomConnectionConfirmed, setIsRoomConnectionConfirmed] = useState(false);
+  const [socketId, setSocketId] = useState<string>('');
+  const [board, setBoard] = useState<BoardPayload | null>(null);
+  console.log(board);
+  console.log(socketId);
 
+  const hasNavigatedRef = useRef(false);
+  const isRoomConnectionConfirmedRef = useRef(false);
 
-
-  const { code } = props
-  const nav = useNavigate()
-  const svr = import.meta.env.VITE_SVR_URL
-  const [isRoomConnectionConfirmed, setIsRoomConnectionConfirmed] = useState(false)
-  const hasNavigatedRef = useRef(false)
-  const isRoomConnectionConfirmedRef = useRef(false)
-  let socketId: string = 'loading';
-  let board: null | BoardPayload = null;
-  
-
-
-  useEffect(async () => {
-    setIsRoomConnectionConfirmed(false)
-    hasNavigatedRef.current = false
-    isRoomConnectionConfirmedRef.current = false
+  useEffect(() => {
+    let socket: Socket | null = null;
 
     const navigateHome = (reason: string) => {
       console.error(`[room-connect] redirecting to /: ${reason} room=${code}`);
 
       if (hasNavigatedRef.current) {
-        return
+        return;
       }
 
-      hasNavigatedRef.current = true
-      nav('/', { replace: true })
-    }
+      hasNavigatedRef.current = true;
+      nav('/', { replace: true });
+    };
 
     if (!svr) {
-      navigateHome('missing VITE_SVR_URL')
-      return
+      navigateHome('missing VITE_SVR_URL');
+      return;
     }
 
-    const socket: Socket = io(svr, {
+    setIsRoomConnectionConfirmed(false);
+    hasNavigatedRef.current = false;
+    isRoomConnectionConfirmedRef.current = false;
+    setSocketId('');
+    setBoard(null);
+
+    socket = io(svr, {
       query: { roomCode: code },
     });
 
     const timeoutId = window.setTimeout(() => {
       if (!isRoomConnectionConfirmedRef.current) {
-        navigateHome(`join timeout after ${JOIN_TIMEOUT_MS}ms`)
+        navigateHome(`join timeout after ${JOIN_TIMEOUT_MS}ms`);
       }
     }, JOIN_TIMEOUT_MS);
 
     socket.on('connect', () => {
-      console.log(`[room-connect] socket connected id=${socket.id} room=${code}`);
-      socketId = socket.id;
+      console.log(`[room-connect] socket connected id=${socket?.id} room=${code}`);
+      setSocketId(socket?.id ?? '');
     });
 
-    socket.on('room-joined', (payload: { roomCode: string; playerCount: number; maxPlayers: number; expiresAt: number }) => {
-      console.log('[room-connect] room joined', payload);
-      isRoomConnectionConfirmedRef.current = true;
-      setIsRoomConnectionConfirmed(true);
-      window.clearTimeout(timeoutId);
-      
-    });
+    socket.on(
+      'room-joined',
+      async (payload: { roomCode: string; playerCount: number; maxPlayers: number; expiresAt: number }) => {
+        console.log('[room-connect] room joined', payload);
+        isRoomConnectionConfirmedRef.current = true;
+        setIsRoomConnectionConfirmed(true);
+        window.clearTimeout(timeoutId);
+
+        if (!socket?.id) {
+          navigateHome('missing socket id after connect');
+          return;
+        }
+
+        try {
+          const result = await getBoard(code, socket.id);
+          setBoard(result);
+        } catch (err) {
+          console.error('[room-connect] getBoard failed', err);
+          navigateHome('getBoard failed');
+        }
+      },
+    );
 
     socket.on('room-error', (payload: { message: string; roomCode?: string }) => {
-      navigateHome(`room-error: ${payload.message} room=${payload.roomCode ?? code}`)
+      navigateHome(`room-error: ${payload.message} room=${payload.roomCode ?? code}`);
     });
 
     socket.on('connect_error', (error) => {
-      navigateHome(`connect_error: ${error.message}`)
+      navigateHome(`connect_error: ${error.message}`);
     });
 
-    board = await getBoard(code, socketId);
-
-    if (board) {
-      console.log(board);
-    } else {
-      nav('/', { replace: true });
-    }
-
-
-
-
     return () => {
-      window.clearTimeout(timeoutId)
-      socket.off('connect')
-      socket.off('room-joined')
-      socket.off('room-error')
-      socket.off('connect_error')
-      socket.disconnect()
-    }
-  }, [code, nav, svr])
+      window.clearTimeout(timeoutId);
+      socket?.off('connect');
+      socket?.off('room-joined');
+      socket?.off('room-error');
+      socket?.off('connect_error');
+      socket?.disconnect();
+    };
+  }, [code, nav, svr]);
 
-
-
-
-
-
-  
-  return <>room: {code} {isRoomConnectionConfirmed ? '(connected)' : '(connecting...)'}</>
+  return (
+    <>
+      room: {code} {isRoomConnectionConfirmed ? '(connected)' : '(connecting...)'}
+    </>
+  );
 }
 
 export default OthelloRoom;
