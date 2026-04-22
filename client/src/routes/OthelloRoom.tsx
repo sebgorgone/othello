@@ -26,6 +26,27 @@ function OthelloRoom(props: Props) {
   console.log(board);
 
 
+  const [myColor, setMyColor] = useState< 'white' | 'black' | null>(null);
+
+  useEffect(() => {
+    if (!board) return;
+
+    if (socketId === board.white) {
+      setMyColor('white');
+      return
+    }
+
+    if (socketId === board.black) {
+      setMyColor('black');
+      return
+    }
+
+    if (socketId !== board.white && socketId !== board.black) {
+      setMyColor(null);
+    }
+  }, [board])
+
+
 
 
   useEffect(() => {
@@ -189,6 +210,21 @@ function OthelloRoom(props: Props) {
               alignItems: 'center'
             }}
           >
+
+
+            <p 
+              style={{
+                fontFamily: 'main-bold',
+                color: 'white',
+                fontSize: '20px',
+              }}
+            >
+
+              { (myColor === 'black' && board.myMove) ? 'Blacks Turn' : 'Whites Turn'}
+
+            </p>
+
+
 
           </div>
 
