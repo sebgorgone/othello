@@ -132,6 +132,11 @@ function OthelloRoom(props: Props) {
 
 
 
+  function getPlayersMove() {
+  }
+
+
+
 
 
 
@@ -220,7 +225,6 @@ function OthelloRoom(props: Props) {
               }}
             >
 
-              { (myColor === 'black' && board.myMove) ? 'Blacks Turn' : 'Whites Turn'}
 
             </p>
 

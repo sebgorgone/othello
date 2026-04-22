@@ -1,7 +1,10 @@
 export type BoardPayload = {
 	myMove: boolean
 	validMoves: { x: number; y: number }[] | null
-	squares: { x: number; y: number; value: 'w' | 'b' | null }[]
+	squares: { x: number; y: number; value: 'w' | 'b' | null }[],
+  white: string | null,
+  black: string | null,
+  turncount: number
 }
 
 export type RoomListItem = {

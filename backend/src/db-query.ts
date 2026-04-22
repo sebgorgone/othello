@@ -6,6 +6,7 @@ type BoardPayload = {
   squares: {x: number, y: number, value: 'w' | 'b' | null}[],
   white: string | null,
   black: string | null,
+  turnCount: number | null
 }
 
 type DbQueryErrorCode =
@@ -300,7 +301,7 @@ export async function getBoard(gameId: string, socketId: string): Promise<BoardP
 
     if (!isBlackPlayer && !isWhitePlayer) {
       await con.commit();
-      return { myMove: false, validMoves: null, squares, white: game.w, black: game.b };
+      return { myMove: false, validMoves: null, squares, white: game.w, black: game.b, turnCount: game.turnCount };
     }
 
     const playersTurn: "white" | "black" = game.turnCount % 2 === 1 ? "white" : "black";
@@ -308,8 +309,8 @@ export async function getBoard(gameId: string, socketId: string): Promise<BoardP
     const myMove = socketColor === playersTurn;
 
     const payload: BoardPayload = myMove
-      ? { myMove: true, validMoves: getValidMoves(playersTurn, squares), squares, white: game.w, black: game.b }
-      : { myMove: false, validMoves: null, squares, white: game.w, black: game.b };
+      ? { myMove: true, validMoves: getValidMoves(playersTurn, squares), squares, white: game.w, black: game.b, turnCount: game.turnCount }
+      : { myMove: false, validMoves: null, squares, white: game.w, black: game.b, turnCount: game.turnCount };
 
     await con.commit();
     return payload;
