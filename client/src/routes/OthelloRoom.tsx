@@ -42,6 +42,15 @@ function OthelloRoom(props: Props) {
       nav('/', { replace: true });
     };
 
+    const navigateResult = (path: '/win' | '/lose' | '/draw') => {
+      if (hasNavigatedRef.current) {
+        return;
+      }
+
+      hasNavigatedRef.current = true;
+      nav(path, { replace: true });
+    };
+
     if (!svr) {
       navigateHome('missing VITE_SVR_URL');
       return;
@@ -111,6 +120,18 @@ function OthelloRoom(props: Props) {
       navigateHome(`connect_error: ${error.message}`);
     });
 
+    socket.on('game-win', () => {
+      navigateResult('/win');
+    });
+
+    socket.on('game-lose', () => {
+      navigateResult('/lose');
+    });
+
+    socket.on('game-tie', () => {
+      navigateResult('/draw');
+    });
+
     return () => {
       window.clearTimeout(timeoutId);
       socket?.off('connect');
@@ -118,6 +139,9 @@ function OthelloRoom(props: Props) {
       socket?.off('refresh-board');
       socket?.off('room-error');
       socket?.off('connect_error');
+      socket?.off('game-win');
+      socket?.off('game-lose');
+      socket?.off('game-tie');
       socket?.disconnect();
     };
   }, [code, nav, svr]);

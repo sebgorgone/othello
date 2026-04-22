@@ -7,6 +7,9 @@ import './index.css';
 import App from './routes/App.tsx';
 import OthelloRoom from './routes/OthelloRoom.tsx';
 import List from './routes/List.tsx'
+import GameWin from './routes/GameWin.tsx';
+import GameLose from './routes/GameLose.tsx';
+import GameDraw from './routes/gameDraw.tsx';
 
 function RoomConnectionRoute() {
   const { roomCode } = useParams()
@@ -31,10 +34,12 @@ createRoot(document.getElementById('root')!).render(
       <Routes>
 
         <Route path='/' element={<App/>} />
-        <Route path='/:roomCode' element={<RoomConnectionRoute />} />
         <Route path='/list' element={<List />} />
-
-
+        <Route path='/win' element={<GameWin />} />
+        <Route path='/lose' element={<GameLose />} />
+        <Route path='/draw' element={<GameDraw />} />
+        <Route path='/:roomCode' element={<RoomConnectionRoute />} />
+        
       </Routes>
     </BrowserRouter>
   </StrictMode>,

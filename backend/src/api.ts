@@ -1,11 +1,13 @@
 import type { Express } from "express";
 import type { Server } from "socket.io";
-import { createRoom, listRooms, MAX_PLAYERS_PER_ROOM, ROOM_TTL_MS, sweepExpiredRooms } from "./socket-helper.js";
+import { createRoom, listRooms, MAX_PLAYERS_PER_ROOM, ROOM_TTL_MS, sweepExpiredRooms, refreshRoomTtl } from "./socket-helper.js";
 import { getBoard, turn } from "./db-query.js";
 
 type CheckDbFn = () => Promise<unknown>;
 
 export function registerApiRoutes(app: Express, io: Server, checkDB: CheckDbFn): void {
+	const emittedGameOver = new Set<string>();
+
 	app.get("/health", async (req, res) => {
 		try {
 			const db = await checkDB();
@@ -66,6 +68,39 @@ export function registerApiRoutes(app: Express, io: Server, checkDB: CheckDbFn):
          }
 
          const board = await getBoard(game_id, socket_id);
+
+		 if (!board.gameOver) {
+			emittedGameOver.delete(game_id);
+		 } else if (!emittedGameOver.has(game_id)) {
+			emittedGameOver.add(game_id);
+
+			if (board.winner === "tie") {
+				if (board.black) {
+					io.to(board.black).emit("game-tie", { game_id });
+				}
+
+				if (board.white && board.white !== board.black) {
+					io.to(board.white).emit("game-tie", { game_id });
+				}
+			} else if (board.winner === "b") {
+				if (board.black) {
+					io.to(board.black).emit("game-win", { game_id });
+				}
+
+				if (board.white) {
+					io.to(board.white).emit("game-lose", { game_id });
+				}
+			} else if (board.winner === "w") {
+				if (board.white) {
+					io.to(board.white).emit("game-win", { game_id });
+				}
+
+				if (board.black) {
+					io.to(board.black).emit("game-lose", { game_id });
+				}
+			}
+		 }
+
          return res.status(200).json({ board });
       } catch (err: any) {
          console.error("GET /board failed:", err);
@@ -91,6 +126,8 @@ export function registerApiRoutes(app: Express, io: Server, checkDB: CheckDbFn):
 
 			await turn(game_id, x, y, socket_id);
 			io.to(game_id).emit("refresh-board", { game_id });
+
+			refreshRoomTtl(game_id);
 
 			return res.status(200).json({ ok: true });
 		} catch (err) {

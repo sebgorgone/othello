@@ -6,7 +6,9 @@ type BoardPayload = {
   squares: {x: number, y: number, value: 'w' | 'b' | null}[],
   white: string | null,
   black: string | null,
-  turnCount: number | null
+  turnCount: number | null,
+  gameOver: boolean,
+  winner: 'b' | 'w' | 'tie' | null
 }
 
 type DbQueryErrorCode =
@@ -36,6 +38,41 @@ type SquareRow = {
   y: number;
   value: "w" | "b" | null;
 };
+
+function evaluateGameOutcome(squares: {x: number, y: number, value: 'w' | 'b' | null}[]) {
+  const hasEmptySquare = squares.some((square) => square.value === null);
+  const blackValidMoves = getValidMoves('black', squares).length;
+  const whiteValidMoves = getValidMoves('white', squares).length;
+  const gameOver = !hasEmptySquare || (blackValidMoves === 0 && whiteValidMoves === 0);
+
+  if (!gameOver) {
+    return { gameOver: false, winner: null as 'b' | 'w' | 'tie' | null };
+  }
+
+  let blackCount = 0;
+  let whiteCount = 0;
+
+  for (const square of squares) {
+    if (square.value === 'b') {
+      blackCount += 1;
+      continue;
+    }
+
+    if (square.value === 'w') {
+      whiteCount += 1;
+    }
+  }
+
+  if (blackCount > whiteCount) {
+    return { gameOver: true, winner: 'b' as const };
+  }
+
+  if (whiteCount > blackCount) {
+    return { gameOver: true, winner: 'w' as const };
+  }
+
+  return { gameOver: true, winner: 'tie' as const };
+}
 
 export async function gameTruncate() {
   await pool.execute('DELETE FROM games')
@@ -450,13 +487,14 @@ export async function getBoard(gameId: string, socketId: string): Promise<BoardP
       y: row.y,
       value: row.value,
     }));
+    const { gameOver, winner } = evaluateGameOutcome(squares);
 
     const isBlackPlayer = game.b === cleanSocketId;
     const isWhitePlayer = game.w === cleanSocketId;
 
     if (!isBlackPlayer && !isWhitePlayer) {
       await con.commit();
-      return { myMove: false, validMoves: null, squares, white: game.w, black: game.b, turnCount: game.turnCount };
+      return { myMove: false, validMoves: null, squares, white: game.w, black: game.b, turnCount: game.turnCount, gameOver, winner };
     }
 
     const playersTurn: "white" | "black" = game.turnCount % 2 === 1 ? "white" : "black";
@@ -464,8 +502,8 @@ export async function getBoard(gameId: string, socketId: string): Promise<BoardP
     const myMove = socketColor === playersTurn;
 
     const payload: BoardPayload = myMove
-      ? { myMove: true, validMoves: getValidMoves(playersTurn, squares), squares, white: game.w, black: game.b, turnCount: game.turnCount }
-      : { myMove: false, validMoves: null, squares, white: game.w, black: game.b, turnCount: game.turnCount };
+      ? { myMove: true, validMoves: getValidMoves(playersTurn, squares), squares, white: game.w, black: game.b, turnCount: game.turnCount, gameOver, winner }
+      : { myMove: false, validMoves: null, squares, white: game.w, black: game.b, turnCount: game.turnCount, gameOver, winner };
 
     await con.commit();
     return payload;

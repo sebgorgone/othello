@@ -19,7 +19,7 @@ function isRoomExpired(room: Room, now = Date.now()): boolean {
 	return room.expiresAt <= now;
 }
 
-function refreshRoomTtl(roomCode: string): boolean {
+export function refreshRoomTtl(roomCode: string): boolean {
 	const room = rooms.get(roomCode);
 
 	if (!room) {
