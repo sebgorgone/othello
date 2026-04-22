@@ -86,6 +86,7 @@ function App() {
             fontWeight: 'bold',
             color: 'green'
           }}
+          target='_blank'
           href='https://www.worldothello.org/about/about-othello/othello-rules/official-rules/'>
           Official Othello Game Rules
         </a>
