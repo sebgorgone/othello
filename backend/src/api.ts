@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "socket.io";
 import { createRoom, listRooms, MAX_PLAYERS_PER_ROOM, ROOM_TTL_MS, sweepExpiredRooms } from "./socket-helper.js";
-import { getBoard } from "./db-query.js";
+import { getBoard, turn } from "./db-query.js";
 
 type CheckDbFn = () => Promise<unknown>;
 
@@ -76,5 +76,26 @@ export function registerApiRoutes(app: Express, io: Server, checkDB: CheckDbFn):
 
          return res.status(500).json({ error: "get-board-failed" });
       }
-   })
+   });
+
+	app.post("/turn", async (req, res) => {
+		try {
+			const game_id = String(req.body?.game_id ?? "");
+			const socket_id = String(req.body?.socket_id ?? "");
+			const x = Number(req.body?.x);
+			const y = Number(req.body?.y);
+
+			if (!game_id || !socket_id || !Number.isInteger(x) || !Number.isInteger(y)) {
+				return res.status(400).json({ error: "turn-malformed" });
+			}
+
+			await turn(game_id, x, y, socket_id);
+			io.to(game_id).emit("refresh-board", { game_id });
+
+			return res.status(200).json({ ok: true });
+		} catch (err) {
+			console.error("POST /turn failed:", err);
+			return res.status(500).json({ error: "turn-failed" });
+		}
+	});
 }

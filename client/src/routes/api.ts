@@ -87,3 +87,45 @@ export async function getRoomList() {
 
 	return data.rooms
 }
+
+export async function turn(socket_id: string, game_id: string, x: number, y: number) {
+	const trimmedSocketId = socket_id.trim()
+	const trimmedGameId = game_id.trim()
+
+	if (!trimmedSocketId || !trimmedGameId || !Number.isInteger(x) || !Number.isInteger(y)) {
+		throw new Error('turn-malformed')
+	}
+
+	if (!svr) {
+		throw new Error('missing VITE_SVR_URL')
+	}
+
+	const res = await fetch(`${svr}/turn`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			game_id: trimmedGameId,
+			socket_id: trimmedSocketId,
+			x,
+			y,
+		}),
+	})
+
+	if (!res.ok) {
+		let serverError = ''
+
+		try {
+			const errJson = await res.json()
+			if (typeof errJson?.error === 'string' && errJson.error.trim()) {
+				serverError = errJson.error.trim()
+			}
+		} catch {
+		}
+
+		throw new Error(
+			serverError ? `turn-failed: ${serverError}` : `turn-failed: ${res.status}`
+		)
+	}
+}

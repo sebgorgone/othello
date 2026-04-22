@@ -173,12 +173,167 @@ export async function gameDelete(game_id: string) {
 }
 
 
-export function turn() {
-  const turnData = {}
-  try {} catch (err) {
-    console.error('error making turn')
+
+
+export async function turn(game_id: string, x: number, y: number, socket_id: string): Promise<boolean> {
+  const cleanGameId = String(game_id ?? '').trim();
+  const cleanSocketId = String(socket_id ?? '').trim();
+
+  if (!cleanGameId || cleanGameId.length !== 6) {
+    throw new Error('game_id malformed or missing');
+  }
+
+  if (!cleanSocketId) {
+    throw new Error('socket_id malformed or missing');
+  }
+
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x > 7 || y < 0 || y > 7) {
+    throw new Error('x or y out of bounds');
+  }
+
+  const con = await pool.getConnection();
+  const inBounds = (checkX: number, checkY: number) => checkX >= 0 && checkX < 8 && checkY >= 0 && checkY < 8;
+  const coord = (checkX: number, checkY: number) => `${checkX},${checkY}`;
+  const directions = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]] as const;
+
+  try {
+    await con.beginTransaction();
+
+    const [gameRows] = await con.execute(
+      'SELECT id, b, w, turnCount FROM games WHERE id = ? FOR UPDATE',
+      [cleanGameId],
+    ) as unknown as [GameRow[], unknown];
+
+    const game = gameRows?.[0];
+
+    if (!game) {
+      throw new Error('game_id not found');
+    }
+
+    const playersTurn = game.turnCount % 2 === 1 ? 'w' : 'b';
+    const isBlackPlayer = cleanSocketId === game.b;
+    const isWhitePlayer = cleanSocketId === game.w;
+    const playerColor: 'w' | 'b' | null = isBlackPlayer ? 'b' : isWhitePlayer ? 'w' : null;
+
+    if (!playerColor || playersTurn !== playerColor) {
+      throw new Error('not players turn to move');
+    }
+
+    const playerValidMovesTable = playerColor === 'b' ? 'bValidMoves' : 'wValidMoves';
+    const [validMoveRows] = await con.execute(
+      `SELECT x, y FROM ${playerValidMovesTable} WHERE game_id = ? AND x = ? AND y = ? LIMIT 1`,
+      [cleanGameId, x, y],
+    ) as unknown as [{ x: number; y: number }[], unknown];
+
+    if (!validMoveRows?.length) {
+      throw new Error('illegal move');
+    }
+
+    const [squareRows] = await con.execute(
+      'SELECT x, y, value FROM squares WHERE game_id = ? ORDER BY y ASC, x ASC',
+      [cleanGameId],
+    ) as unknown as [SquareRow[], unknown];
+
+    if (!squareRows || squareRows.length !== 64) {
+      throw new Error('invalid board state');
+    }
+
+    const board = new Map<string, 'w' | 'b' | null>();
+    for (const square of squareRows) {
+      board.set(coord(square.x, square.y), square.value);
+    }
+
+    if (board.get(coord(x, y)) !== null) {
+      throw new Error('target square is not empty');
+    }
+
+    const enemyColor: 'w' | 'b' = playerColor === 'b' ? 'w' : 'b';
+    const convertedCoordinates: { x: number; y: number }[] = [];
+
+    for (const [dx, dy] of directions) {
+      let currentX = x + dx;
+      let currentY = y + dy;
+      const directionCaptured: { x: number; y: number }[] = [];
+
+      while (inBounds(currentX, currentY)) {
+        const currentValue = board.get(coord(currentX, currentY));
+
+        if (currentValue === enemyColor) {
+          directionCaptured.push({ x: currentX, y: currentY });
+          currentX += dx;
+          currentY += dy;
+          continue;
+        }
+
+        if (currentValue === playerColor && directionCaptured.length > 0) {
+          convertedCoordinates.push(...directionCaptured);
+        }
+
+        break;
+      }
+    }
+
+    if (convertedCoordinates.length === 0) {
+      throw new Error('illegal move - no chips converted');
+    }
+
+    board.set(coord(x, y), playerColor);
+    for (const move of convertedCoordinates) {
+      board.set(coord(move.x, move.y), playerColor);
+    }
+
+    const changedSquares = [{ x, y }, ...convertedCoordinates];
+    for (const square of changedSquares) {
+      await con.execute(
+        'UPDATE squares SET value = ? WHERE game_id = ? AND x = ? AND y = ?',
+        [playerColor, cleanGameId, square.x, square.y],
+      );
+    }
+
+    const updatedSquares = squareRows.map((square) => ({
+      x: square.x,
+      y: square.y,
+      value: board.get(coord(square.x, square.y)) ?? null,
+    }));
+
+    let finalTurnCount = game.turnCount + 1;
+    let nextPlayer: 'white' | 'black' = finalTurnCount % 2 === 1 ? 'white' : 'black';
+    let nextValidMoves = getValidMoves(nextPlayer, updatedSquares);
+
+    if (nextValidMoves.length === 0) {
+      finalTurnCount += 1;
+      nextPlayer = finalTurnCount % 2 === 1 ? 'white' : 'black';
+      nextValidMoves = getValidMoves(nextPlayer, updatedSquares);
+    }
+
+    await con.execute('UPDATE games SET turnCount = ? WHERE id = ?', [finalTurnCount, cleanGameId]);
+
+    await con.execute('DELETE FROM bValidMoves WHERE game_id = ?', [cleanGameId]);
+    await con.execute('DELETE FROM wValidMoves WHERE game_id = ?', [cleanGameId]);
+
+    const nextValidMovesTable = nextPlayer === 'black' ? 'bValidMoves' : 'wValidMoves';
+    for (const move of nextValidMoves) {
+      await con.execute(
+        `INSERT INTO ${nextValidMovesTable} (game_id, x, y) VALUES (?, ?, ?)`,
+        [cleanGameId, move.x, move.y],
+      );
+    }
+
+    await con.commit();
+    return true;
+  } catch (err) {
+    await con.rollback();
+    console.error('error making turn', err);
+    throw err;
+  } finally {
+    con.release();
   }
 }
+
+
+
+
+
 
 export async function assignPlayer(game_id: string, socket_id: string) {
   const con = await pool.getConnection();

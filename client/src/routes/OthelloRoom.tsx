@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
-import { getBoard } from './api';
+import { getBoard, turn } from './api';
 import type { BoardPayload } from './api';
 import { buttonStyle } from './App.tsx'
+
 type Props = {
   code: string;
 };
@@ -20,7 +21,7 @@ function OthelloRoom(props: Props) {
   const [board, setBoard] = useState<BoardPayload | null>(null);
   const hasNavigatedRef = useRef(false);
   const isRoomConnectionConfirmedRef = useRef(false);
-
+  const socketIdRef = useRef('');
 
   console.log(board);
 
@@ -49,6 +50,7 @@ function OthelloRoom(props: Props) {
     setIsRoomConnectionConfirmed(false);
     hasNavigatedRef.current = false;
     isRoomConnectionConfirmedRef.current = false;
+    socketIdRef.current = '';
     setBoard(null);
 
     socket = io(svr, {
@@ -63,6 +65,7 @@ function OthelloRoom(props: Props) {
 
     socket.on('connect', () => {
       console.log(`[room-connect] socket connected id=${socket?.id} room=${code}`);
+      socketIdRef.current = socket?.id ?? '';
     });
 
     socket.on(
@@ -72,6 +75,7 @@ function OthelloRoom(props: Props) {
         isRoomConnectionConfirmedRef.current = true;
         setIsRoomConnectionConfirmed(true);
         window.clearTimeout(timeoutId);
+        socketIdRef.current = socket?.id ?? '';
 
         if (!socket?.id) {
           navigateHome('missing socket id after connect');
@@ -88,6 +92,17 @@ function OthelloRoom(props: Props) {
       },
     );
 
+    socket.on('refresh-board', async () => {
+      if (!socket?.id) return;
+
+      try {
+        const result = await getBoard(code, socket.id);
+        setBoard(result);
+      } catch (err) {
+        console.error('[room-connect] refresh-board failed', err);
+      }
+    });
+
     socket.on('room-error', (payload: { message: string; roomCode?: string }) => {
       navigateHome(`room-error: ${payload.message} room=${payload.roomCode ?? code}`);
     });
@@ -100,35 +115,38 @@ function OthelloRoom(props: Props) {
       window.clearTimeout(timeoutId);
       socket?.off('connect');
       socket?.off('room-joined');
+      socket?.off('refresh-board');
       socket?.off('room-error');
       socket?.off('connect_error');
       socket?.disconnect();
     };
   }, [code, nav, svr]);
 
-
-
   function getPlayersMove() {
-    if (!board) return null
+    if (!board) return null;
 
-    if (board.turnCount % 2 === 1) return 'white'
+    if (board.turnCount % 2 === 1) return 'white';
 
-    return 'black'
+    return 'black';
   }
 
   function checkValidMove(x: number, y: number) {
-    
-    if (!board || !board.validMoves) return
+    if (!board || !board.validMoves) return false;
 
-    let foundMove = board.validMoves.filter(vm => vm.x === x && vm.y === y);
+    const foundMove = board.validMoves.filter((vm) => vm.x === x && vm.y === y);
 
-    if (foundMove.length === 0) {
-      return false
-    } else return true
-
+    return foundMove.length !== 0;
   }
 
+  async function handleTurn(x: number, y: number) {
+    if (!board || !socketIdRef.current) return;
 
+    try {
+      await turn(socketIdRef.current, code, x, y);
+    } catch (err) {
+      console.error('[turn] failed', err);
+    }
+  }
 
   function buildBoard() {
 
@@ -170,34 +188,19 @@ function OthelloRoom(props: Props) {
               />
             }
 
-
-            {checkValidMove(s.x, s.y) && 
+            {checkValidMove(s.x, s.y) &&
               <button
+                type='button'
+                onClick={() => void handleTurn(s.x, s.y)}
                 className='valid-move'
-                style={{backgroundColor: '#9f9f9f'}}
-              >
-
-              </button>
+                style={{ backgroundColor: '#9f9f9f' }}
+              />
             }
-
-
-
-
           </div>
         ))}
-
       </div>
-
-    </>
+    </>;
   }
-
-
-
-
-
-
-  //room: {code} {isRoomConnectionConfirmed ? '(connected)' : '(connecting...)'}
-
 
   return (
     <>
@@ -237,7 +240,7 @@ function OthelloRoom(props: Props) {
 
             <button
               style={{
-                ...buttonStyle ,
+                ...buttonStyle,
                 backgroundColor: 'ForestGreen'
               }}
               type='button'
@@ -246,16 +249,14 @@ function OthelloRoom(props: Props) {
               leave match
             </button>
 
-            <p 
+            <p
               style={{
                 fontFamily: 'main-bold',
                 color: 'white',
                 fontSize: '20px',
               }}
             >
-
               room: {code} {isRoomConnectionConfirmed ? '(connected)' : '(connecting...)'}
-
             </p>
 
 
@@ -272,42 +273,26 @@ function OthelloRoom(props: Props) {
               marginRight: '8px'
             }}
           >
-
-            {getPlayersMove() && 
+            {getPlayersMove() &&
               <img
                 alt={`${getPlayersMove()}'s chip`}
-                style={{width: '64px', aspectRatio: '1 / 1'}}
+                style={{ width: '64px', aspectRatio: '1 / 1' }}
                 src={`${getPlayersMove()}-chip.svg`}
               />}
 
-
-            <p 
+            <p
               style={{
                 fontFamily: 'main-bold',
                 color: 'white',
                 fontSize: '20px',
               }}
             >
-
               {getPlayersMove()}{getPlayersMove() ? "'s turn" : ''}
-
             </p>
-
-
-
           </div>
-
-
-
-
-
         </div>
 
-
         {buildBoard()}
-
-
-
 
       </div>
     </>
