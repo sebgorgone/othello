@@ -1,4 +1,5 @@
 import type { Server } from "socket.io";
+import { assignPlayer, gameDelete, resignPlayer, gameCreate } from "./db-query.js";
 
 export type Room = {
 	code: string;
@@ -41,7 +42,7 @@ function generateRoomCode(length = 6): string {
 	return result;
 }
 
-export function createRoom(): Room {
+export async function createRoom(): Promise<Room> {
 	let code = generateRoomCode();
 
 	while (rooms.has(code)) {
@@ -57,13 +58,17 @@ export function createRoom(): Room {
 
 	rooms.set(code, room);
 
-  //create game tables
-  
+	try {
+		await gameCreate(code);
+	} catch (err) {
+		rooms.delete(code);
+		throw err;
+	}
 
 	return room;
 }
 
-function leaveCurrentRoom(socketId: string): { roomCode: string; before: number; after: number; deleted: boolean } | null {
+async function leaveCurrentRoom(socketId: string): Promise<{ roomCode: string; before: number; after: number; deleted: boolean } | null> {
 	const currentRoomCode = socketToRoom.get(socketId);
 
 	if (!currentRoomCode) {
@@ -79,12 +84,26 @@ function leaveCurrentRoom(socketId: string): { roomCode: string; before: number;
 
 	const before = room.sockets.size;
 
+	try {
+		await resignPlayer(socketId, currentRoomCode);
+	} catch (err) {
+		console.error(`[room-leave-fail] id=${socketId} room=${currentRoomCode} reason=resign-failed`, err);
+		throw err;
+	}
+
 	room.sockets.delete(socketId);
 	socketToRoom.delete(socketId);
 
 	const after = room.sockets.size;
 
 	if (room.sockets.size === 0) {
+		try {
+			await gameDelete(currentRoomCode);
+		} catch (err) {
+			console.error(`[room-leave-fail] id=${socketId} room=${currentRoomCode} reason=delete-failed`, err);
+			throw err;
+		}
+
 		rooms.delete(currentRoomCode);
 		return {
 			roomCode: currentRoomCode,
@@ -92,7 +111,6 @@ function leaveCurrentRoom(socketId: string): { roomCode: string; before: number;
 			after,
 			deleted: true,
 		};
-    //remove game tables
 	}
 
 	refreshRoomTtl(currentRoomCode);
@@ -116,7 +134,7 @@ export function listRooms() {
 		.sort((a, b) => a.createdAt - b.createdAt);
 }
 
-function expireRoom(io: Server, roomCode: string, reason: string): void {
+async function expireRoom(io: Server, roomCode: string, reason: string): Promise<void> {
 	const room = rooms.get(roomCode);
 
 	if (!room) {
@@ -131,23 +149,29 @@ function expireRoom(io: Server, roomCode: string, reason: string): void {
 		roomSocket?.leave(roomCode);
 	}
 
+	try {
+		await gameDelete(roomCode);
+	} catch (err) {
+		console.error(`[room-expire-fail] room=${roomCode} reason=delete-failed`, err);
+		throw err;
+	}
+
 	rooms.delete(roomCode);
-  //delete game tables
 }
 
-export function sweepExpiredRooms(io: Server): void {
+export async function sweepExpiredRooms(io: Server): Promise<void> {
 	const now = Date.now();
 
 	for (const [roomCode, room] of rooms.entries()) {
 		if (isRoomExpired(room, now)) {
-			expireRoom(io, roomCode, "ttl-expired");
+			await expireRoom(io, roomCode, "ttl-expired");
 		}
 	}
 }
 
 export function registerSocketHandlers(io: Server): void {
 	const sweepTimer = setInterval(() => {
-		sweepExpiredRooms(io);
+		void sweepExpiredRooms(io);
 	}, ROOM_SWEEP_INTERVAL_MS);
 
 	sweepTimer.unref();
@@ -158,7 +182,7 @@ export function registerSocketHandlers(io: Server): void {
 
 		console.log(`[socket-connect] id=${socket.id} ip=${remoteAddress} requestedRoom=${initialRoomQuery || "none"}`);
 
-		const tryJoinRoom = (rawRoomCode: unknown) => {
+		const tryJoinRoom = async (rawRoomCode: unknown) => {
 			const roomCode = typeof rawRoomCode === "string" ? rawRoomCode.trim().toUpperCase() : "";
 			const existingRoomCode = socketToRoom.get(socket.id);
 
@@ -190,7 +214,7 @@ export function registerSocketHandlers(io: Server): void {
 
 			if (isRoomExpired(room)) {
 				console.log(`[room-join-fail] id=${socket.id} room=${roomCode} reason=room-expired`);
-				expireRoom(io, roomCode, "ttl-expired");
+				await expireRoom(io, roomCode, "ttl-expired");
 				socket.emit("room-error", { message: "room has expired", roomCode });
 				return;
 			}
@@ -203,13 +227,20 @@ export function registerSocketHandlers(io: Server): void {
 				return;
 			}
 
+			try {
+				await assignPlayer(roomCode, socket.id);
+			} catch (err) {
+				console.error(`[room-join-fail] id=${socket.id} room=${roomCode} reason=assign-player-failed`, err);
+				socket.emit("room-error", { message: "failed to assign player", roomCode });
+				return;
+			}
+
 			const before = room.sockets.size;
 			room.sockets.add(socket.id);
 			socketToRoom.set(socket.id, roomCode);
 			socket.join(roomCode);
 			refreshRoomTtl(roomCode);
 			const after = room.sockets.size;
-
 
 
 			console.log(
@@ -225,25 +256,47 @@ export function registerSocketHandlers(io: Server): void {
 		};
 
 		socket.on("join-room", (payload?: { roomCode?: string }) => {
-			tryJoinRoom(payload?.roomCode);
+			void tryJoinRoom(payload?.roomCode);
+		});
+
+		socket.on("leave-room", () => {
+			void leaveCurrentRoom(socket.id)
+				.then((leaveResult) => {
+					if (leaveResult) {
+						console.log(
+							`[socket-leave] id=${socket.id} ip=${remoteAddress} room=${leaveResult.roomCode} occupancy=${leaveResult.before}->${leaveResult.after} deleted=${leaveResult.deleted}`,
+						);
+						return;
+					}
+
+					console.log(`[socket-leave] id=${socket.id} ip=${remoteAddress} room=none`);
+				})
+				.catch((err) => {
+					console.error(`[socket-leave-fail] id=${socket.id} ip=${remoteAddress}`, err);
+					socket.emit("room-error", { message: "failed to leave room" });
+				});
 		});
 
 		const handshakeRoomCode = socket.handshake.query.roomCode;
 		if (typeof handshakeRoomCode === "string") {
-			tryJoinRoom(handshakeRoomCode);
+			void tryJoinRoom(handshakeRoomCode);
 		}
 
 		socket.on("disconnect", () => {
-			const leaveResult = leaveCurrentRoom(socket.id);
+			void leaveCurrentRoom(socket.id)
+				.then((leaveResult) => {
+					if (leaveResult) {
+						console.log(
+							`[socket-disconnect] id=${socket.id} ip=${remoteAddress} room=${leaveResult.roomCode} occupancy=${leaveResult.before}->${leaveResult.after} deleted=${leaveResult.deleted}`,
+						);
+						return;
+					}
 
-			if (leaveResult) {
-				console.log(
-					`[socket-disconnect] id=${socket.id} ip=${remoteAddress} room=${leaveResult.roomCode} occupancy=${leaveResult.before}->${leaveResult.after} deleted=${leaveResult.deleted}`,
-				);
-				return;
-			}
-
-			console.log(`[socket-disconnect] id=${socket.id} ip=${remoteAddress} room=none`);
+					console.log(`[socket-disconnect] id=${socket.id} ip=${remoteAddress} room=none`);
+				})
+				.catch((err) => {
+					console.error(`[socket-disconnect-fail] id=${socket.id} ip=${remoteAddress}`, err);
+				});
 		});
 	});
 }

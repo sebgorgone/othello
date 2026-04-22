@@ -8,6 +8,7 @@ import { checkDB, initDB } from "./db-connect.js";
 import cors from "cors";
 import { registerApiRoutes } from "./api.js";
 import { registerSocketHandlers } from "./socket-helper.js";
+import { gameTruncate } from "./db-query.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +33,8 @@ const io = new Server(server, {
 
 registerApiRoutes(app, io, checkDB);
 registerSocketHandlers(io);
+
+await gameTruncate();
 
 const PORT = process.env.PORT || 3000;
 

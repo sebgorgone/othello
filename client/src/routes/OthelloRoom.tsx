@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { io, type Socket } from 'socket.io-client'
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { io, type Socket } from 'socket.io-client';
+import { getBoard } from './api';
+import type { BoardPayload } from './api';
 
 type Props = {
   code: string
@@ -19,17 +21,18 @@ function OthelloRoom(props: Props) {
   const [isRoomConnectionConfirmed, setIsRoomConnectionConfirmed] = useState(false)
   const hasNavigatedRef = useRef(false)
   const isRoomConnectionConfirmedRef = useRef(false)
-
+  let socketId: string = 'loading';
+  let board: null | BoardPayload = null;
   
 
 
-  useEffect(() => {
+  useEffect(async () => {
     setIsRoomConnectionConfirmed(false)
     hasNavigatedRef.current = false
     isRoomConnectionConfirmedRef.current = false
 
     const navigateHome = (reason: string) => {
-      console.error(`[room-connect] redirecting to /: ${reason} room=${code}`)
+      console.error(`[room-connect] redirecting to /: ${reason} room=${code}`);
 
       if (hasNavigatedRef.current) {
         return
@@ -46,32 +49,45 @@ function OthelloRoom(props: Props) {
 
     const socket: Socket = io(svr, {
       query: { roomCode: code },
-    })
+    });
 
     const timeoutId = window.setTimeout(() => {
       if (!isRoomConnectionConfirmedRef.current) {
         navigateHome(`join timeout after ${JOIN_TIMEOUT_MS}ms`)
       }
-    }, JOIN_TIMEOUT_MS)
+    }, JOIN_TIMEOUT_MS);
 
     socket.on('connect', () => {
-      console.log(`[room-connect] socket connected id=${socket.id} room=${code}`)
-    })
+      console.log(`[room-connect] socket connected id=${socket.id} room=${code}`);
+      socketId = socket.id;
+    });
 
     socket.on('room-joined', (payload: { roomCode: string; playerCount: number; maxPlayers: number; expiresAt: number }) => {
-      console.log('[room-connect] room joined', payload)
-      isRoomConnectionConfirmedRef.current = true
-      setIsRoomConnectionConfirmed(true)
-      window.clearTimeout(timeoutId)
-    })
+      console.log('[room-connect] room joined', payload);
+      isRoomConnectionConfirmedRef.current = true;
+      setIsRoomConnectionConfirmed(true);
+      window.clearTimeout(timeoutId);
+      
+    });
 
     socket.on('room-error', (payload: { message: string; roomCode?: string }) => {
       navigateHome(`room-error: ${payload.message} room=${payload.roomCode ?? code}`)
-    })
+    });
 
     socket.on('connect_error', (error) => {
       navigateHome(`connect_error: ${error.message}`)
-    })
+    });
+
+    board = await getBoard(code, socketId);
+
+    if (board) {
+      console.log(board);
+    } else {
+      nav('/', { replace: true });
+    }
+
+
+
 
     return () => {
       window.clearTimeout(timeoutId)
