@@ -5,7 +5,12 @@ function App () {
   const nav = useNavigate();
   const svr = import.meta.env.VITE_SVR_URL
   const tsGradient = '0 0 2px rgba(255,255,255,0.9), 0 0 6px rgba(255,255,255,0.7), 0 0 12px rgba(255,255,255,0.5), 0 0 24px rgba(255,255,255,0.3), 0 0 40px rgba(255,255,255,0.15)'
-
+  const buttonStyle = {
+            border: 'none',
+            padding: '8px',
+            backgroundColor: 'green',
+            fontFamily: 'main-bold'
+          }
 
 
   async function createRoomHandler() {
@@ -30,6 +35,10 @@ function App () {
       console.error('POST req to /rooms failed: ' + err);
       throw err;
     }
+  }
+
+  function roomListHandler() {
+    nav('/list')
   }
 
 
@@ -62,15 +71,24 @@ function App () {
           type='button'
           onClick={createRoomHandler}
           style={{
-            border: 'none',
-            padding: '8px',
-            backgroundColor: 'green',
-            color: 'white',
-            fontFamily: 'main-bold'
+            ...buttonStyle, color: 'green'
           }}
         >
 
           start a new game 
+
+        </button>
+
+        <button
+          type='button'
+          onClick={roomListHandler}
+          style={{
+            ...buttonStyle,
+            color: 'ForestGreen'
+          }}
+        >
+
+          Join Game 
 
         </button>
 
