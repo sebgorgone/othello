@@ -7,12 +7,13 @@ function List(){
 
    useEffect( async () => {
       try {
-         const list = await getRoomList();
-
-         setRoomList(list);
-         console.log('retrieved rooms')
+         async () => {
+            const list = await getRoomList();
+            setRoomList(list);
+         }
+         console.log('retrieved rooms');
       } catch (err) {
-         console.error("error getting list " + err)
+         console.error("error getting list " + err);
       }
 
    }, [])
