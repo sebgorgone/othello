@@ -14,7 +14,7 @@ function App () {
             fontFamily: 'main-bold',
             color: '#000000',
             borderRadius: '3px;',
-            boxShadow: tsGradient,
+            boxShadow: bsGradient,
             fontSize: '17px'
           }
 
@@ -59,7 +59,8 @@ function App () {
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: '#353025',
-          gap: '32px'
+          gap: '32px',
+          color: '#000000'
         }}
       >
 
