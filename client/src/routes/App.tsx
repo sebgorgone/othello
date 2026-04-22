@@ -12,8 +12,8 @@ function App () {
             padding: '8px',
             backgroundColor: 'green',
             fontFamily: 'main-bold',
-            color: '#000000',
-            borderRadius: '3px;',
+            color: '#111111',
+            borderRadius: '3px',
             boxShadow: bsGradient,
             fontSize: '17px'
           }
@@ -59,7 +59,7 @@ function App () {
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: '#353025',
-          gap: '32px',
+          gap: '48px',
           color: '#000000'
         }}
       >
@@ -82,6 +82,7 @@ function App () {
           style={{
             fontSize: '1.3em',
             fontWeight: 'bold',
+            color: 'green'
           }} 
           href='https://www.worldothello.org/about/about-othello/othello-rules/official-rules/'>
             Official Othello Game Rules
@@ -92,7 +93,7 @@ function App () {
           type='button'
           onClick={createRoomHandler}
           style={{
-            ...buttonStyle, color: 'green'
+            ...buttonStyle, backgroundColor: 'green'
           }}
         >
 
@@ -105,7 +106,7 @@ function App () {
           onClick={roomListHandler}
           style={{
             ...buttonStyle,
-            color: 'ForestGreen'
+            backgroundColor: 'ForestGreen'
           }}
         >
 
