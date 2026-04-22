@@ -1,25 +1,27 @@
 import { useNavigate } from 'react-router-dom'
+export const bsGradient = '0 0 12px rgba(255,255,255,0.5), 0 0 24px rgba(255,255,255,0.3), 0 0 40px rgba(255,255,255,0.15)'
+export const buttonStyle = {
+  border: 'none',
+  padding: '8px',
+  backgroundColor: 'green',
+  fontFamily: 'main-bold',
+  color: '#111111',
+  borderRadius: '3px',
+  boxShadow: bsGradient,
+  fontSize: '17px'
+}
 
-function App () {
+function App() {
 
   const nav = useNavigate();
   const svr = import.meta.env.VITE_SVR_URL
   const tsGradient = '0 0 2px rgba(255,255,255,0.9), 0 0 6px rgba(255,255,255,0.7), 0 0 12px rgba(255,255,255,0.5), 0 0 24px rgba(255,255,255,0.3), 0 0 40px rgba(255,255,255,0.15)'
-  const bsGradient = '0 0 12px rgba(255,255,255,0.5), 0 0 24px rgba(255,255,255,0.3), 0 0 40px rgba(255,255,255,0.15)'
 
-  const buttonStyle = {
-            border: 'none',
-            padding: '8px',
-            backgroundColor: 'green',
-            fontFamily: 'main-bold',
-            color: '#111111',
-            borderRadius: '3px',
-            boxShadow: bsGradient,
-            fontSize: '17px'
-          }
+
 
 
   async function createRoomHandler() {
+
 
     try {
       const res = await fetch(`${svr}/rooms`, {
@@ -65,12 +67,12 @@ function App () {
       >
 
 
-        <h1 
+        <h1
           style={{
-            fontFamily: "main-bold", 
-            color: 'white', 
+            fontFamily: "main-bold",
+            color: 'white',
             textShadow: tsGradient,
-            fontSize: '22px', 
+            fontSize: '38px',
           }}
         >
 
@@ -83,9 +85,9 @@ function App () {
             fontSize: '1.3em',
             fontWeight: 'bold',
             color: 'green'
-          }} 
+          }}
           href='https://www.worldothello.org/about/about-othello/othello-rules/official-rules/'>
-            Official Othello Game Rules
+          Official Othello Game Rules
         </a>
 
 
@@ -97,7 +99,7 @@ function App () {
           }}
         >
 
-          start a new game 
+          start a new game
 
         </button>
 
@@ -110,13 +112,13 @@ function App () {
           }}
         >
 
-          Join Game 
+          Join Game
 
         </button>
 
 
 
-        
+
       </div>
     </>
   )
