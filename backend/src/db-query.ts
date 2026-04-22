@@ -4,8 +4,8 @@ type BoardPayload = {
   myMove: boolean,
   validMoves: {x: number, y: number}[] | null,
   squares: {x: number, y: number, value: 'w' | 'b' | null}[],
-  white: string,
-  black: string,
+  white: string | null,
+  black: string | null,
 }
 
 type DbQueryErrorCode =

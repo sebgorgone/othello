@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import { getBoard } from './api';
 import type { BoardPayload } from './api';
-import { buttonStyle, bsGradient } from './App.tsx'
+import { buttonStyle } from './App.tsx'
 type Props = {
   code: string;
 };
@@ -158,7 +158,7 @@ function OthelloRoom(props: Props) {
                 ...buttonStyle ,
                 backgroundColor: 'ForestGreen'
               }}
-              tyoe='button'
+              type='button'
               onClick={() => nav('/')}
             >
               leave match
