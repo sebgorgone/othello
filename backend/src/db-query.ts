@@ -300,7 +300,7 @@ export async function getBoard(gameId: string, socketId: string): Promise<BoardP
 
     if (!isBlackPlayer && !isWhitePlayer) {
       await con.commit();
-      return { myMove: false, validMoves: null, squares };
+      return { myMove: false, validMoves: null, squares, white: game.w, black: game.b };
     }
 
     const playersTurn: "white" | "black" = game.turnCount % 2 === 1 ? "white" : "black";
@@ -308,7 +308,7 @@ export async function getBoard(gameId: string, socketId: string): Promise<BoardP
     const myMove = socketColor === playersTurn;
 
     const payload: BoardPayload = myMove
-      ? { myMove: true, validMoves: getValidMoves(playersTurn, squares), squares, white: game.w, black: game.b}
+      ? { myMove: true, validMoves: getValidMoves(playersTurn, squares), squares, white: game.w, black: game.b }
       : { myMove: false, validMoves: null, squares, white: game.w, black: game.b };
 
     await con.commit();

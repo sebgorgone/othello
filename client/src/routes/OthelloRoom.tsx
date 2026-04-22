@@ -188,7 +188,9 @@ function OthelloRoom(props: Props) {
               gap: '12px',
               alignItems: 'center'
             }}
-          ></div>
+          >
+
+          </div>
 
 
 
