@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import { getBoard } from './api';
 import type { BoardPayload } from './api';
-
+import { buttonStyle, bsGradient } from './App.tsx'
 type Props = {
   code: string;
 };
@@ -19,11 +19,14 @@ function OthelloRoom(props: Props) {
   const [isRoomConnectionConfirmed, setIsRoomConnectionConfirmed] = useState(false);
   const [socketId, setSocketId] = useState<string>('');
   const [board, setBoard] = useState<BoardPayload | null>(null);
-  console.log(board);
-  console.log(socketId);
-
   const hasNavigatedRef = useRef(false);
   const isRoomConnectionConfirmedRef = useRef(false);
+
+
+  console.log(board);
+
+
+
 
   useEffect(() => {
     let socket: Socket | null = null;
@@ -106,9 +109,98 @@ function OthelloRoom(props: Props) {
     };
   }, [code, nav, svr]);
 
+
+
+
+
+
+  //room: {code} {isRoomConnectionConfirmed ? '(connected)' : '(connecting...)'}
+
+
   return (
     <>
-      room: {code} {isRoomConnectionConfirmed ? '(connected)' : '(connecting...)'}
+      <div
+        style={{
+          width: '100vw',
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          backgroundColor: '#353025',
+          flexDirection: 'column',
+        }}
+      >
+
+
+        <div
+          style={{
+            display: 'flex',
+            width: '100%',
+            height: '86px',
+            justifyContent: 'space-between',
+            padding: '8px',
+            alignItems: 'center',
+          }}
+        >
+
+
+
+          <div
+            style={{
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'center'
+            }}
+          >
+
+
+            <button
+              style={{
+                ...buttonStyle ,
+                backgroundColor: 'ForestGreen'
+              }}
+              tyoe='button'
+              onClick={() => nav('/')}
+            >
+              leave match
+            </button>
+
+            <p 
+              style={{
+                fontFamily: 'main-bold',
+                color: 'white',
+                fontSize: '20px',
+              }}
+            >
+
+              room: {code} {isRoomConnectionConfirmed ? '(connected)' : '(connecting...)'}
+
+            </p>
+
+
+
+          </div>
+
+
+
+          <div
+            style={{
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'center'
+            }}
+          ></div>
+
+
+
+
+
+        </div>
+
+
+
+
+
+      </div>
     </>
   );
 }

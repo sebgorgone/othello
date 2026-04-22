@@ -4,6 +4,8 @@ type BoardPayload = {
   myMove: boolean,
   validMoves: {x: number, y: number}[] | null,
   squares: {x: number, y: number, value: 'w' | 'b' | null}[],
+  white: string,
+  black: string,
 }
 
 type DbQueryErrorCode =
@@ -306,8 +308,8 @@ export async function getBoard(gameId: string, socketId: string): Promise<BoardP
     const myMove = socketColor === playersTurn;
 
     const payload: BoardPayload = myMove
-      ? { myMove: true, validMoves: getValidMoves(playersTurn, squares), squares }
-      : { myMove: false, validMoves: null, squares };
+      ? { myMove: true, validMoves: getValidMoves(playersTurn, squares), squares, white: game.w, black: game.b}
+      : { myMove: false, validMoves: null, squares, white: game.w, black: game.b };
 
     await con.commit();
     return payload;
