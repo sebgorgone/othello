@@ -4,7 +4,7 @@ export type BoardPayload = {
 	squares: { x: number; y: number; value: 'w' | 'b' | null }[],
   white: string | null,
   black: string | null,
-  turncount: number
+  turnCount: number
 }
 
 export type RoomListItem = {

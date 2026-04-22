@@ -17,34 +17,12 @@ function OthelloRoom(props: Props) {
   const svr = import.meta.env.VITE_SVR_URL;
 
   const [isRoomConnectionConfirmed, setIsRoomConnectionConfirmed] = useState(false);
-  const [socketId, setSocketId] = useState<string>('');
   const [board, setBoard] = useState<BoardPayload | null>(null);
   const hasNavigatedRef = useRef(false);
   const isRoomConnectionConfirmedRef = useRef(false);
 
 
   console.log(board);
-
-
-  const [myColor, setMyColor] = useState< 'white' | 'black' | null>(null);
-
-  useEffect(() => {
-    if (!board) return;
-
-    if (socketId === board.white) {
-      setMyColor('white');
-      return
-    }
-
-    if (socketId === board.black) {
-      setMyColor('black');
-      return
-    }
-
-    if (socketId !== board.white && socketId !== board.black) {
-      setMyColor(null);
-    }
-  }, [board])
 
 
 
@@ -71,7 +49,6 @@ function OthelloRoom(props: Props) {
     setIsRoomConnectionConfirmed(false);
     hasNavigatedRef.current = false;
     isRoomConnectionConfirmedRef.current = false;
-    setSocketId('');
     setBoard(null);
 
     socket = io(svr, {
@@ -86,7 +63,6 @@ function OthelloRoom(props: Props) {
 
     socket.on('connect', () => {
       console.log(`[room-connect] socket connected id=${socket?.id} room=${code}`);
-      setSocketId(socket?.id ?? '');
     });
 
     socket.on(
@@ -138,6 +114,81 @@ function OthelloRoom(props: Props) {
     if (board.turnCount % 2 === 1) return 'white'
 
     return 'black'
+  }
+
+  function checkValidMove(x: number, y: number) {
+    
+    if (!board.validMoves) return
+
+    let foundMove = board.validMoves.filter(vm => vm.x === x && vm.y === y);
+
+    if (foundMove.length === 0) {
+      return false
+    } else return true
+
+  }
+
+
+
+  function buildBoard() {
+
+    if (!board) return;
+
+    return <>
+
+      <div
+        style={{
+          width: 'min(100vw - 100px, 100vh - 100px)',
+          aspectRatio: '1 / 1',
+          display: 'grid',
+          gridTemplate: 'repeat(8, 1fr) / repeat(8, 1fr)'
+        }}
+      >
+
+        {board.squares.map((s, idx) => (
+          <div
+            key={`${s.x}-${s.y}-${idx}`}
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: (s.x + s.y) % 2 === 0 ? '#656055' : 'ForestGreen',
+            }}
+          >
+
+
+
+            {s.value && 
+              <img
+                src={`${s.value === 'w' ? 'white' : 'black'}-chip.svg`}
+                style={{
+                  width: '85%',
+                  height: '85%'
+                }}
+              />
+            }
+
+
+            {checkValidMove(s.x, s.y) && 
+              <button
+                className='valid-move'
+                style={{backgroundColor: '#9f9f9f'}}
+              >
+
+              </button>
+            }
+
+
+
+
+          </div>
+        ))}
+
+      </div>
+
+    </>
   }
 
 
@@ -217,7 +268,8 @@ function OthelloRoom(props: Props) {
             style={{
               display: 'flex',
               gap: '12px',
-              alignItems: 'center'
+              alignItems: 'center',
+              marginRight: '8px'
             }}
           >
 
@@ -251,6 +303,8 @@ function OthelloRoom(props: Props) {
 
         </div>
 
+
+        {buildBoard()}
 
 
 
