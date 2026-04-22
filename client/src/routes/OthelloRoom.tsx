@@ -133,6 +133,11 @@ function OthelloRoom(props: Props) {
 
 
   function getPlayersMove() {
+    if (!board) return null
+
+    if (board.turnCount % 2 === 1) return 'white'
+
+    return 'black'
   }
 
 
@@ -216,6 +221,13 @@ function OthelloRoom(props: Props) {
             }}
           >
 
+            {getPlayersMove() && 
+              <img
+                alt={`${getPlayersMove()}'s chip`}
+                style={{width: '64px', aspectRatio: '1 / 1'}}
+                src={`${getPlayersMove()}-chip.svg`}
+              />}
+
 
             <p 
               style={{
@@ -225,6 +237,7 @@ function OthelloRoom(props: Props) {
               }}
             >
 
+              {getPlayersMove()}{getPlayersMove ? "'s turn" : ''}
 
             </p>
 
