@@ -111,6 +111,7 @@ function App() {
             ...buttonStyle,
             backgroundColor: 'ForestGreen'
           }}
+          
         >
 
           Join Game

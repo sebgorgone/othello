@@ -73,6 +73,8 @@ function List() {
                   top: 24,
                   left: 24
                }}
+               type='button'
+               onClick={() => nav('/')}
             >
              go back
             </button>
