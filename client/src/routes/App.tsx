@@ -5,12 +5,14 @@ function App () {
   const nav = useNavigate();
   const svr = import.meta.env.VITE_SVR_URL
   const tsGradient = '0 0 2px rgba(255,255,255,0.9), 0 0 6px rgba(255,255,255,0.7), 0 0 12px rgba(255,255,255,0.5), 0 0 24px rgba(255,255,255,0.3), 0 0 40px rgba(255,255,255,0.15)'
+  const bsGradient = '0 0 12px rgba(255,255,255,0.5), 0 0 24px rgba(255,255,255,0.3), 0 0 40px rgba(255,255,255,0.15)'
+
   const buttonStyle = {
             border: 'none',
             padding: '8px',
             backgroundColor: 'green',
             fontFamily: 'main-bold',
-            color: 'black',
+            color: '#000000',
             borderRadius: '3px;',
             boxShadow: tsGradient,
             fontSize: '17px'
@@ -62,7 +64,14 @@ function App () {
       >
 
 
-        <h1 style={{fontFamily: "main-bold", color: 'white', textShadow: tsGradient }}>
+        <h1 
+          style={{
+            fontFamily: "main-bold", 
+            color: 'white', 
+            textShadow: tsGradient,
+            fontSize: '22px', 
+          }}
+        >
 
           Uhthello
 
