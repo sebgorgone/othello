@@ -1,9 +1,5 @@
 #OTHELLO ONLINE
 
-
-
-*8x8 grid : x axis -> A-H, y axis -> 1-8*
-
 [Game Start Conditions]
 
 ````
@@ -79,3 +75,15 @@ DB_NAME=othello_db #use the name you set within mysql-server
 ````bash
 VITE_SVR_URL=http://localhost:3000 #http address and port that the server is listening on
 ````
+
+
+#[AI USAGE]
+
+I used ai for a number of things in the project but the main contribution it made to the code was error handling and edge cases.
+    - for example the in memory room state has to match the sql db state for the rooms, clients connected to rooms, and their respective color.
+      Ai had been a huge help sanitizing inputs and making sure that errors were properly handled and understood on both sides of the stack
+
+Ai definetly helped configure the typescript compiler for the node server as that is something I hadn't done before. I wanted to make sure that it was set up to support ESM.
+Subsesquently writing typescript for node I ended up looking up alot in terms of return types and some other ts syntax I am not fully used to using.
+
+Its last main functionality was to go over my serverside move handler algorythms- I had it try to acheive the same task that I had already implemented logic for with excessive comments to show me how it would have done it and highlight pitfalls and edgecases in my logic.
