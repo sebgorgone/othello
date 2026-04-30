@@ -19,7 +19,7 @@ app.use(cors({
   origin: '*'
 }));
 
-await initDB();
+initDB();
 
 app.use(express.json());
 
@@ -34,7 +34,7 @@ const io = new Server(server, {
 registerApiRoutes(app, io, checkDB);
 registerSocketHandlers(io);
 
-await gameTruncate();
+gameTruncate();
 
 const PORT = process.env.PORT || 3000;
 

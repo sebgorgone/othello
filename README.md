@@ -53,6 +53,12 @@ npm run dev
 ````
 
 >[db]
+
+#[MOVED TO SQLite for database engine]
+*No configuration is needed to run the server*
+*If you wish to switch to the mysql based backend the configuration is still here for you to do so*
+*You will need to manually install mysql-server to the package.json*
+
 ````sql
 CREATE DATABASE {OTHELLO_DB}
 CREATE USER 'username'@'localhost' IDENTIFIED BY 'password';

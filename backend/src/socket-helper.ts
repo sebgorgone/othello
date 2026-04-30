@@ -59,7 +59,7 @@ export async function createRoom(): Promise<Room> {
 	rooms.set(code, room);
 
 	try {
-		await gameCreate(code);
+		gameCreate(code);
 	} catch (err) {
 		rooms.delete(code);
 		throw err;
@@ -85,7 +85,7 @@ async function leaveCurrentRoom(socketId: string): Promise<{ roomCode: string; b
 	const before = room.sockets.size;
 
 	try {
-		await resignPlayer(socketId, currentRoomCode);
+		resignPlayer(socketId, currentRoomCode);
 	} catch (err) {
 		console.error(`[room-leave-fail] id=${socketId} room=${currentRoomCode} reason=resign-failed`, err);
 		throw err;
@@ -98,7 +98,7 @@ async function leaveCurrentRoom(socketId: string): Promise<{ roomCode: string; b
 
 	if (room.sockets.size === 0) {
 		try {
-			await gameDelete(currentRoomCode);
+			gameDelete(currentRoomCode);
 		} catch (err) {
 			console.error(`[room-leave-fail] id=${socketId} room=${currentRoomCode} reason=delete-failed`, err);
 			throw err;
@@ -150,7 +150,7 @@ async function expireRoom(io: Server, roomCode: string, reason: string): Promise
 	}
 
 	try {
-		await gameDelete(roomCode);
+		gameDelete(roomCode);
 	} catch (err) {
 		console.error(`[room-expire-fail] room=${roomCode} reason=delete-failed`, err);
 		throw err;
@@ -228,10 +228,8 @@ export function registerSocketHandlers(io: Server): void {
 			}
 
 			try {
-				await assignPlayer(roomCode, socket.id);
-			} catch (err) {
-				console.error(`[room-join-fail] id=${socket.id} room=${roomCode} reason=assign-player-failed`, err);
-				socket.emit("room-error", { message: "failed to assign player", roomCode });
+			assignPlayer(roomCode, socket.id);
+		} catch (err) {
 				return;
 			}
 

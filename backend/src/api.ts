@@ -3,14 +3,14 @@ import type { Server } from "socket.io";
 import { createRoom, listRooms, MAX_PLAYERS_PER_ROOM, ROOM_TTL_MS, sweepExpiredRooms, refreshRoomTtl } from "./socket-helper.js";
 import { getBoard, turn } from "./db-query.js";
 
-type CheckDbFn = () => Promise<unknown>;
+type CheckDbFn = () => unknown;
 
 export function registerApiRoutes(app: Express, io: Server, checkDB: CheckDbFn): void {
 	const emittedGameOver = new Set<string>();
 
 	app.get("/health", async (req, res) => {
 		try {
-			const db = await checkDB();
+			const db = checkDB();
 
 			const health = {
 				server: "up",
@@ -58,7 +58,7 @@ export function registerApiRoutes(app: Express, io: Server, checkDB: CheckDbFn):
 		}
 	});
 
-   app.get("/board", async (req, res) => {
+	app.get("/board", (req, res) => {
       try {
          const game_id = String(req.query.game_id ?? "");
          const socket_id = String(req.query.socket_id ?? "");
@@ -67,7 +67,7 @@ export function registerApiRoutes(app: Express, io: Server, checkDB: CheckDbFn):
             return res.status(400).json({ error: "game_id-or-socket_id-malformed" });
          }
 
-         const board = await getBoard(game_id, socket_id);
+		 const board = getBoard(game_id, socket_id);
 
 		 if (!board.gameOver) {
 			emittedGameOver.delete(game_id);
@@ -113,7 +113,7 @@ export function registerApiRoutes(app: Express, io: Server, checkDB: CheckDbFn):
       }
    });
 
-	app.post("/turn", async (req, res) => {
+	app.post("/turn", (req, res) => {
 		try {
 			const game_id = String(req.body?.game_id ?? "");
 			const socket_id = String(req.body?.socket_id ?? "");
@@ -124,7 +124,7 @@ export function registerApiRoutes(app: Express, io: Server, checkDB: CheckDbFn):
 				return res.status(400).json({ error: "turn-malformed" });
 			}
 
-			await turn(game_id, x, y, socket_id);
+			turn(game_id, x, y, socket_id);
 			io.to(game_id).emit("refresh-board", { game_id });
 
 			refreshRoomTtl(game_id);

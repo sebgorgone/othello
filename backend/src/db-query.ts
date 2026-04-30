@@ -1,4 +1,4 @@
-import pool from './db-connect.js'
+import db from './db-connect.js'
 
 type BoardPayload = {
   myMove: boolean,
@@ -74,8 +74,8 @@ function evaluateGameOutcome(squares: {x: number, y: number, value: 'w' | 'b' | 
   return { gameOver: true, winner: 'tie' as const };
 }
 
-export async function gameTruncate() {
-  await pool.execute('DELETE FROM games')
+export function gameTruncate() {
+  db.prepare('DELETE FROM games').run()
 }
 
 
@@ -155,64 +155,50 @@ function getValidMoves(
 }
 
 
-export async function gameCreate(game_id: string) {
-  const con = await pool.getConnection()
-  try {
-    await con.beginTransaction();
-    await con.execute('INSERT INTO games (id) VALUES (?)', [game_id]);
+export function gameCreate(game_id: string) {
+  const transaction = db.transaction(() => {
+    db.prepare('INSERT INTO games (id) VALUES (?)').run(game_id);
     const squares: {x: number, y: number, value: 'w' | 'b' | null}[] = []
 
-
     for (let i = 0; i < 8; i++) {
-
       for (let j = 0; j < 8; j++) {
-
         if (i === 3 && j === 3) {
-          await con.execute('INSERT INTO squares (game_id, x, y, value) VALUES (?, ?, ?, ?)', [game_id, i, j, 'w']);
+          db.prepare('INSERT INTO squares (game_id, x, y, value) VALUES (?, ?, ?, ?)').run(game_id, i, j, 'w');
           squares.push({x: i, y: j, value: 'w'});
         } else if (i === 3 && j === 4) {
-          await con.execute('INSERT INTO squares (game_id, x, y, value) VALUES (?, ?, ?, ?)', [game_id, i, j, 'b']);
+          db.prepare('INSERT INTO squares (game_id, x, y, value) VALUES (?, ?, ?, ?)').run(game_id, i, j, 'b');
           squares.push({x: i, y: j, value: 'b'});
         } else if (i === 4 && j === 3) {
-          await con.execute('INSERT INTO squares (game_id, x, y, value) VALUES (?, ?, ?, ?)', [game_id, i, j, 'b']);
+          db.prepare('INSERT INTO squares (game_id, x, y, value) VALUES (?, ?, ?, ?)').run(game_id, i, j, 'b');
           squares.push({x: i, y: j, value: 'b'});
         } else if (i === 4 && j === 4) {
-          await con.execute('INSERT INTO squares (game_id, x, y, value) VALUES (?, ?, ?, ?)', [game_id, i, j, 'w']);
+          db.prepare('INSERT INTO squares (game_id, x, y, value) VALUES (?, ?, ?, ?)').run(game_id, i, j, 'w');
           squares.push({x: i, y: j, value: 'w'});
         } else {
-          await con.execute('INSERT INTO squares (game_id, x, y) VALUES (?, ?, ?)', [game_id, i, j]);
+          db.prepare('INSERT INTO squares (game_id, x, y) VALUES (?, ?, ?)').run(game_id, i, j);
           squares.push({x: i, y: j, value: null});
         }
-
       }
-
     }
 
-
     const validMoves = getValidMoves('black', squares);
-
     for (let move of validMoves) {
-      await con.execute('INSERT INTO bValidMoves (game_id, x, y) VALUES (?, ?, ?)', [game_id, move.x, move.y]);
-    } 
+      db.prepare('INSERT INTO bValidMoves (game_id, x, y) VALUES (?, ?, ?)').run(game_id, move.x, move.y);
+    }
+  });
 
-    await con.commit();
-  } catch (err) {
-    await con.rollback();
-    throw err;
-  } finally {
-    con.release();
-  }
+  transaction();
 }
 
 
-export async function gameDelete(game_id: string) {
-  await pool.execute('DELETE FROM games WHERE id = ?', [game_id])
+export function gameDelete(game_id: string) {
+  db.prepare('DELETE FROM games WHERE id = ?').run(game_id)
 }
 
 
 
 
-export async function turn(game_id: string, x: number, y: number, socket_id: string): Promise<boolean> {
+export function turn(game_id: string, x: number, y: number, socket_id: string): boolean {
   const cleanGameId = String(game_id ?? '').trim();
   const cleanSocketId = String(socket_id ?? '').trim();
 
@@ -228,20 +214,14 @@ export async function turn(game_id: string, x: number, y: number, socket_id: str
     throw new Error('x or y out of bounds');
   }
 
-  const con = await pool.getConnection();
   const inBounds = (checkX: number, checkY: number) => checkX >= 0 && checkX < 8 && checkY >= 0 && checkY < 8;
   const coord = (checkX: number, checkY: number) => `${checkX},${checkY}`;
   const directions = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]] as const;
 
-  try {
-    await con.beginTransaction();
-
-    const [gameRows] = await con.execute(
-      'SELECT id, b, w, turnCount FROM games WHERE id = ? FOR UPDATE',
-      [cleanGameId],
-    ) as unknown as [GameRow[], unknown];
-
-    const game = gameRows?.[0];
+  const transaction = db.transaction(() => {
+    const game = db.prepare(
+      'SELECT id, b, w, turnCount FROM games WHERE id = ?'
+    ).get(cleanGameId) as GameRow | undefined;
 
     if (!game) {
       throw new Error('game_id not found');
@@ -257,19 +237,17 @@ export async function turn(game_id: string, x: number, y: number, socket_id: str
     }
 
     const playerValidMovesTable = playerColor === 'b' ? 'bValidMoves' : 'wValidMoves';
-    const [validMoveRows] = await con.execute(
-      `SELECT x, y FROM ${playerValidMovesTable} WHERE game_id = ? AND x = ? AND y = ? LIMIT 1`,
-      [cleanGameId, x, y],
-    ) as unknown as [{ x: number; y: number }[], unknown];
+    const validMoveRow = db.prepare(
+      `SELECT x, y FROM ${playerValidMovesTable} WHERE game_id = ? AND x = ? AND y = ? LIMIT 1`
+    ).get(cleanGameId, x, y) as { x: number; y: number } | undefined;
 
-    if (!validMoveRows?.length) {
+    if (!validMoveRow) {
       throw new Error('illegal move');
     }
 
-    const [squareRows] = await con.execute(
-      'SELECT x, y, value FROM squares WHERE game_id = ? ORDER BY y ASC, x ASC',
-      [cleanGameId],
-    ) as unknown as [SquareRow[], unknown];
+    const squareRows = db.prepare(
+      'SELECT x, y, value FROM squares WHERE game_id = ? ORDER BY y ASC, x ASC'
+    ).all(cleanGameId) as SquareRow[];
 
     if (!squareRows || squareRows.length !== 64) {
       throw new Error('invalid board state');
@@ -320,11 +298,9 @@ export async function turn(game_id: string, x: number, y: number, socket_id: str
     }
 
     const changedSquares = [{ x, y }, ...convertedCoordinates];
+    const updateStmt = db.prepare('UPDATE squares SET value = ? WHERE game_id = ? AND x = ? AND y = ?');
     for (const square of changedSquares) {
-      await con.execute(
-        'UPDATE squares SET value = ? WHERE game_id = ? AND x = ? AND y = ?',
-        [playerColor, cleanGameId, square.x, square.y],
-      );
+      updateStmt.run(playerColor, cleanGameId, square.x, square.y);
     }
 
     const updatedSquares = squareRows.map((square) => ({
@@ -343,28 +319,20 @@ export async function turn(game_id: string, x: number, y: number, socket_id: str
       nextValidMoves = getValidMoves(nextPlayer, updatedSquares);
     }
 
-    await con.execute('UPDATE games SET turnCount = ? WHERE id = ?', [finalTurnCount, cleanGameId]);
+    db.prepare('UPDATE games SET turnCount = ? WHERE id = ?').run(finalTurnCount, cleanGameId);
 
-    await con.execute('DELETE FROM bValidMoves WHERE game_id = ?', [cleanGameId]);
-    await con.execute('DELETE FROM wValidMoves WHERE game_id = ?', [cleanGameId]);
+    db.prepare('DELETE FROM bValidMoves WHERE game_id = ?').run(cleanGameId);
+    db.prepare('DELETE FROM wValidMoves WHERE game_id = ?').run(cleanGameId);
 
     const nextValidMovesTable = nextPlayer === 'black' ? 'bValidMoves' : 'wValidMoves';
+    const insertStmt = db.prepare(`INSERT INTO ${nextValidMovesTable} (game_id, x, y) VALUES (?, ?, ?)`);
     for (const move of nextValidMoves) {
-      await con.execute(
-        `INSERT INTO ${nextValidMovesTable} (game_id, x, y) VALUES (?, ?, ?)`,
-        [cleanGameId, move.x, move.y],
-      );
+      insertStmt.run(cleanGameId, move.x, move.y);
     }
+  });
 
-    await con.commit();
-    return true;
-  } catch (err) {
-    await con.rollback();
-    console.error('error making turn', err);
-    throw err;
-  } finally {
-    con.release();
-  }
+  transaction();
+  return true;
 }
 
 
@@ -372,83 +340,60 @@ export async function turn(game_id: string, x: number, y: number, socket_id: str
 
 
 
-export async function assignPlayer(game_id: string, socket_id: string) {
-  const con = await pool.getConnection();
-
-  try {
-    await con.beginTransaction();
-
-    const [rows]: any = await con.execute('SELECT id, b, w FROM games WHERE id = ? FOR UPDATE', [game_id]);
-    const game = rows?.[0];
+export function assignPlayer(game_id: string, socket_id: string) {
+  const transaction = db.transaction(() => {
+    const game = db.prepare('SELECT id, b, w FROM games WHERE id = ?').get(game_id) as any;
 
     if (!game) {
       throw new Error('game not found');
     }
 
     if (game.b === socket_id) {
-      await con.commit();
       return 'b';
     }
 
     if (game.w === socket_id) {
-      await con.commit();
       return 'w';
     }
 
     if (game.b === null) {
-      await con.execute('UPDATE games SET b = ? WHERE id = ?', [socket_id, game_id]);
-      await con.commit();
+      db.prepare('UPDATE games SET b = ? WHERE id = ?').run(socket_id, game_id);
       return 'b';
     }
 
     if (game.w === null) {
-      await con.execute('UPDATE games SET w = ? WHERE id = ?', [socket_id, game_id]);
-      await con.commit();
+      db.prepare('UPDATE games SET w = ? WHERE id = ?').run(socket_id, game_id);
       return 'w';
     }
 
     throw new Error('game already filled');
-  } catch (err) {
-    console.error('assignPlayer error:', err);
-    await con.rollback();
-    throw err;
-  } finally {
-    con.release();
-  }
+  });
+
+  return transaction();
 }
 
-export async function resignPlayer(socketId: string, gameId: string) {
-   const con = await pool.getConnection(); 
+export function resignPlayer(socketId: string, gameId: string) {
+  const transaction = db.transaction(() => {
+    const game = db.prepare('SELECT id, b, w FROM games WHERE id = ?').get(gameId) as any;
 
-   try {
-      await con.beginTransaction();
+    if (!game) {
+      throw new Error('game not found')
+    }
 
-      const [rows]: any = await con.execute('SELECT id, b, w FROM games WHERE id = ? FOR UPDATE', [gameId]);
-      const game = rows?.[0];
+    const playerColor = game.b === socketId ? 'b' : game.w === socketId ? 'w' : null;
 
-      if (!game) {
-         throw new Error('game not found')
-      }
+    if (!playerColor) {
+      throw new Error('player not in game');
+    }
 
-      const playerColor = game.b === socketId ? 'b' : game.w === socketId ? 'w' : null;
+    const updateColumn = playerColor === 'b' ? 'b' : 'w';
+    db.prepare('UPDATE games SET ' + updateColumn + ' = NULL WHERE id = ?').run(gameId);
+  });
 
-      if (!playerColor) {
-         throw new Error('player not in game');
-      }
-
-      const updateColumn = playerColor === 'b' ? 'b' : 'w';
-      await con.execute('UPDATE games SET ' + updateColumn + ' = NULL WHERE id = ?', [gameId]);
-      await con.commit();
-   } catch (err) {
-      console.error('resignPlayer error:', err);
-      await con.rollback();
-      throw err;
-   } finally {
-      con.release()
-   }
+  transaction();
 }
 
-export async function getBoard(gameId: string, socketId: string): Promise<BoardPayload> {
+export function getBoard(gameId: string, socketId: string): BoardPayload {
   const cleanGameId = String(gameId ?? "").trim();
   const cleanSocketId = String(socketId ?? "").trim();
 
@@ -456,26 +401,18 @@ export async function getBoard(gameId: string, socketId: string): Promise<BoardP
     throw new DbQueryError("invalid-args", "game_id or socket_id malformed");
   }
 
-  const con = await pool.getConnection();
-
-  try {
-    // single snapshot read for game row + squares
-    await con.beginTransaction();
-
-    const [gameRows] = await con.execute(
-      "SELECT id, b, w, turnCount FROM games WHERE id = ?",
-      [cleanGameId],
-    ) as unknown as [GameRow[], unknown];
-
-    const game = gameRows?.[0];
+  const transaction = db.transaction(() => {
+    const game = db.prepare(
+      "SELECT id, b, w, turnCount FROM games WHERE id = ?"
+    ).get(cleanGameId) as GameRow | undefined;
+    
     if (!game) {
       throw new DbQueryError("game-not-found", "game not found");
     }
 
-    const [squareRows] = await con.execute(
-      "SELECT x, y, value FROM squares WHERE game_id = ? ORDER BY y ASC, x ASC",
-      [cleanGameId],
-    ) as unknown as [SquareRow[], unknown];
+    const squareRows = db.prepare(
+      "SELECT x, y, value FROM squares WHERE game_id = ? ORDER BY y ASC, x ASC"
+    ).all(cleanGameId) as SquareRow[];
 
     // expected board size for othello
     if (!squareRows || squareRows.length !== 64) {
@@ -493,7 +430,6 @@ export async function getBoard(gameId: string, socketId: string): Promise<BoardP
     const isWhitePlayer = game.w === cleanSocketId;
 
     if (!isBlackPlayer && !isWhitePlayer) {
-      await con.commit();
       return { myMove: false, validMoves: null, squares, white: game.w, black: game.b, turnCount: game.turnCount, gameOver, winner };
     }
 
@@ -505,17 +441,8 @@ export async function getBoard(gameId: string, socketId: string): Promise<BoardP
       ? { myMove: true, validMoves: getValidMoves(playersTurn, squares), squares, white: game.w, black: game.b, turnCount: game.turnCount, gameOver, winner }
       : { myMove: false, validMoves: null, squares, white: game.w, black: game.b, turnCount: game.turnCount, gameOver, winner };
 
-    await con.commit();
     return payload;
-  } catch (err) {
-    try {
-      await con.rollback();
-    } catch {
-      // no-op
-    }
-    console.error("getBoard error:", err);
-    throw err;
-  } finally {
-    con.release();
-  }
+  });
+
+  return transaction();
 }
